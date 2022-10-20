@@ -1,0 +1,7 @@
+v 3
+d violinplot: Stata module to draw violin plots
+d 
+d Author: Ben Jann, University of Bern, ben.jann@unibe.ch
+d
+d Distribution-Date: 20221020
+f violinplot.ado
