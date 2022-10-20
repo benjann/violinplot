@@ -11,7 +11,7 @@ Requires Stata 15 or newer as well as the following packages from SSC:
 
 Installation from GitHub:
 
-    . net from https://raw.githubusercontent.com/benjann/lnmor/violinplot/
+    . net from https://raw.githubusercontent.com/benjann/violinplot/main/
     . net install violinplot, replace
 
 Install dependencies from SSC:
