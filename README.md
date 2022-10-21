@@ -1,10 +1,11 @@
 # violinplot
 Stata module to draw violin plots
 
-This is a very preliminary version. No documentation is available yet. Minimal
-explanations can be found in the header of the code.
+`violinplot` draws so called violin plots that illustrate the distributions
+of the specified variables. A violin plot is an overlay of a (reflected) density
+estimate and a box plot.
 
-Requires Stata 15 or newer as well as the following packages from SSC:
+`violinplot` Stata 15 or newer as well as the following packages from SSC:
 `dstat`, `moremata`, `palettes`, `colrspace`
 
 ---
@@ -24,6 +25,14 @@ Install dependencies from SSC:
 ---
 
 Main changes:
+
+    22oct2022 (version 1.0.1)
+    - documentation added
+    - overlay option added
+    - option pstyles() added
+    - option horizontal added
+    - dscale(,subgraph) renamed to dscale(,group)
+    - various additional refinements and bug fixes
 
     20oct2022 (version 1.0.0)
     - released on GitHub

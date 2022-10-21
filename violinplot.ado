@@ -1,90 +1,104 @@
-*! version 1.0.0  20oct2022  Ben Jann
-
-/*
-requires: dstat, moremata, palettes, colrspace
-
-syntax:
-    single subgraph:
-        violinplot varlist [if] [in] [weights] [, options]
-
-    multiple subgraphs:
-        violinplot (varlist) (varlist) ... [if] [in] [weights] [, options]
-
-options:
-    pdfopts(opts)       options passed though to -dstat pdf-
-    range(a b)          limit evaluation range of pdf; should also specify pdf(exact)
-    dscale([#][, opts]) # sets a custom scaling of the pdf; default is #=1
-                        opts can either be subgraph (determine scaling by subgraph)
-                        or individual (determine scaling)
-    noline              omit pdf lines
-    line(opts)          options affecting rendering of the pdf lines
-    lcolor(spec)        set color(s); spec is -palette [, options]- compatible with
-                        colorpalette; colors will be expanded/interpolated/recycled
-                        to as many colors as are needed; specify single color to use
-                        same color for all; colors will be recycled between
-                        subgraphs
-    fill[(opts)]        add shading to pdf; opts affect the rendering; can also
-                        type fill(select(numlist)) to apply shading only to selected
-                        variables
-    fcolor(spec)        like lcolor(), but for fill
-    nowhiskers          omit whiskers
-    whiskers(opts)      options affecting rendering of the whiskers
-    wcolor(spec)        like lcolor(), but for whiskers
-    nobox               omit box
-    box(opts)           options affecting rendering of box
-    bcolor(spec)        like lcolor(), but for box
-    nomedian            omit median
-    median(opts)        options affecting rendering of median
-    medcolor(spec)      like lcolor(), but for median
-    mean[(opts)]        add mean; opts affect the rendering
-    meancolor(spec)     like lcolor(), but for mean
-    color(spec)         like lcolor(), but affecting all elements (unless element-
-                        specific option is specified)
-    vertical            draw vertical violins
-    labels(strlist)     provide custom labels; default is to use variable labels/names
-    bylabels(strlist)   provide titles for subgraphs
-    byopts(opts)        by options
-    twoway_options      general twoway options
-
-there is no over() option or anything; use command -separate- if you want to
-display results by subpopulations; example:
-
-    . sysuse nlsw88
-    . separate wage, by(race) veryshortlabel 
-    . violinplot wage?
-
-here's another example that illustrates the use of colors from -colorpalette-:
-
-    . sysuse nlsw88
-    . separate wage, by(industry) veryshortlabel
-    . violinplot wage?*, color(sb muted) nobox nowhiskers median(msymbol(o))
-*/
+*! version 1.0.1  22oct2022  Ben Jann
 
 program violinplot
     version 15
     
     // syntax
     syntax [anything] [if] [in] [pw iw fw] [, ///
-        PDFopts(str) range(numlist max=2 missingok) DScale(str) ///
-        noline     LINE2(str)     LColor(str) ///
-        fill       FILL2(str)     FColor(str) ///
-        noWHISKers WHISKers2(str) WColor(str) ///
-        nobox      BOX2(str)      BColor(str) ///
-        noMEDian   MEDian2(str)   MEDColor(str) ///
-        mean       MEAN2(str)     MEANColor(str) ///
+        PDFopts(str) ///
+        range(numlist max=2 missingok) ///
+        DScale(str) ///
+        NOLINE     LINE     LINE2(str)     LColor(str) ///
+        NOFILL     FILL     FILL2(str)     FColor(str) ///
+        NOWHISKers WHISKers WHISKers2(str) WColor(str) ///
+        NOBOX      BOX      BOX2(str)      BColor(str) ///
+        NOMEDian   MEDian   MEDian2(str)   MEDColor(str) ///
+        NOMEAN     MEAN     MEAN2(str)     MEANColor(str) ///
         COLor(str) ///
-        VERTical ///
+        PSTYles(numlist int >0) ///
+        VERTical HORizontal ///
+        overlay ///
         LABels(str asis) ///
         BYLABels(str asis) BYOPTs(str) * ]
+    // orientation
+    if "`vertical'"!="" & "`horizontal'"!="" {
+        di as err "vertical and horizontal not both allowed"
+        exit 198
+    }
+    if "`overlay'"!="" {
+        if "`horizontal'"=="" local vertical vertical
+    }
+    // fill option; default is nofill (unless noline is specified)
     if `"`fill2'"'!="" local fill fill
-    _parse_fill, `fill2'
-    if "`line'" !="" {
-        if `"`fillselect'"'!="" {
-            di as err "{bf:fill(select())} not allowed if {bf:noline} is specified"
+    if "`fill'"!="" {
+        if "`nofill'"!="" {
+            di as err "fill and nofill not both allowed"
             exit 198
         }
     }
-    if `"`mean2'"'!="" local mean eman
+    _parse_fill, `fill2'
+    // line option; default is line
+    if "`noline'"==""       local line line
+    else if `"`line2'"'!="" local line line
+    if "`line'"!="" {
+        if "`noline'"!="" {
+            di as err "line and noline not both allowed"
+            exit 198
+        }
+    }
+    else {
+        if "`nofill'"!="" {
+            di as err "noline and nofill not both allowed"
+            exit 198
+        }
+        if `"`fillselect'"'!="" {
+            di as err "noline and fill(select()) not both allowed"
+            exit 198
+        }
+        local fill fill // set fill on if noline has been specified
+    }
+    // whiskers option: default is whiskers unless overlay has been specified
+    if `"`whiskers2'"'!="" local whiskers whiskers
+    if "`whiskers'"!="" {
+        if "`nowhiskers'"!="" {
+            di as err "whiskers and nowhiskers not both allowed"
+            exit 198
+        }
+    }
+    if "`nowhiskers'"=="" {
+        if "`overlay'"=="" local whiskers whiskers
+    }
+    // box option: default is box unless overlay has been specified
+    if `"`box2'"'!="" local box box
+    if "`box'"!="" {
+        if "`nobox'"!="" {
+            di as err "box and nobox not both allowed"
+            exit 198
+        }
+    }
+    if "`nobox'"=="" {
+        if "`overlay'"=="" local box box
+    }
+    // median option: default is median
+    if `"`median2'"'!="" local median median
+    if "`median'"!="" {
+        if "`nomedian'"!="" {
+            di as err "median and nomedian not both allowed"
+            exit 198
+        }
+    }
+    if "`nomedian'"=="" local median median
+    // mean option: default is nomean
+    if `"`mean2'"'!="" local mean mean
+    if "`mean'"!="" {
+        if "`nomean'"!="" {
+            di as err "mean and nomean not both allowed"
+            exit 198
+        }
+    }
+    // list of plot types
+    local plotlist `fill' `line' `whiskers' `box' `median' `mean'
+    // further option
     _parse_range `range' // returns lb ub
     _parse_dscale `dscale' // returns dscale and dstype
     local dscale = `dscale' * 0.5
@@ -106,11 +120,20 @@ program violinplot
         _parse comma lhs rhs : color
         if `"`rhs'"'=="" local rhs ","
         colorpalette `lhs' `rhs' nograph n(`k')
+        if r(n)!=`k' {
+            // wrong number of colors, e.g. because select() was applied
+            colorpalette `r(p)', nograph n(`k') class(`r(pclass)')
+        }
         local color `"`r(p)'"'
     }
     foreach opt in l f w b med mean  {
         if `"``opt'color'"'=="" {
-            if !("`opt'"=="med" & "`box'"=="") {
+            if "`opt'"=="med" {
+                if "`box'"=="" | `"`median2'"'!="" {
+                    local `opt'color `"`color'"'
+                }
+            }
+            else {
                 local `opt'color `"`color'"'
             }
         }
@@ -118,6 +141,10 @@ program violinplot
             _parse comma lhs rhs : `opt'color
             if `"`rhs'"'=="" local rhs ","
             colorpalette `lhs' `rhs' nograph n(`k')
+            if r(n)!=`k' {
+                // wrong number of colors, e.g. because select() was applied
+                colorpalette `r(p)', nograph n(`k') class(`r(pclass)')
+            }
             local `opt'color `"`r(p)'"'
         }
     }
@@ -204,7 +231,7 @@ program violinplot
         }
         local N0 = `offset' + 1
         qui replace `by' = `j' in `N0'/`N'
-        local offset = `N'
+        local offset = `N' + 1 // insert empty row (missings)
     }
     
     // obtain max of pdf, rescale, mirror, and shift
@@ -213,14 +240,16 @@ program violinplot
             local i 0
             foreach v of local d {
                 local ++i
+                if "`overlay'"!="" local pos `j'
+                else               local pos `i'
                 su `v' if `by'==`j', meanonly
-                qui replace `v' = `v' * `dscale' / r(max) + `i' if `by'==`j'
+                qui replace `v' = `v' * `dscale' / r(max) + `pos' if `by'==`j'
                 local tmp: word `i' of `q'
-                qui replace `tmp' = 2*`i' - `v' if `by'==`j'
+                qui replace `tmp' = 2*`pos' - `v' if `by'==`j'
             }
         }
     }
-    else if "`dstype'"=="subgraph" {
+    else if "`dstype'"=="group" {
         forv j = 1/`g' {
             local dmax 0
             foreach v of local d {
@@ -230,9 +259,11 @@ program violinplot
             local i 0
             foreach v of local d {
                 local ++i
-                qui replace `v' = `v' * `dscale' / `dmax' + `i' if `by'==`j'
+                if "`overlay'"!="" local pos `j'
+                else               local pos `i'
+                qui replace `v' = `v' * `dscale' / `dmax' + `pos' if `by'==`j'
                 local tmp: word `i' of `q'
-                qui replace `tmp' = 2*`i' - `v' if `by'==`j'
+                qui replace `tmp' = 2*`pos' - `v' if `by'==`j'
             }
         }
     }
@@ -242,128 +273,149 @@ program violinplot
             su `v', meanonly
             local dmax = max(`dmax', r(max))
         }
-        local i 0
-        foreach v of local d {
-            local ++i
-            qui replace `v' = `v' * `dscale' / `dmax' + `i'
-            local tmp: word `i' of `q'
-            qui replace `tmp' = 2*`i' - `v'
-        }
-    }
-    
-    // define bylabels
-    forv j = 1/`g' {
-        gettoken bylab bylabels : bylabels
-        if `"`bylab'"'=="" {
-            gettoken bylab : varlist_`j'
-        }
-        lab def `by' `j' `"`bylab'"', modify
-    }
-    lab val `by' `by'
-    
-    // define ylabels handle vertical
-    local ylabels
-    forv i = 1/`k' {
-        gettoken ylab labels : labels
-        if `"`ylab'"'=="" {
-            local v: word `i' of `varlist'
-            local ylab: var lab `v'
-            if `"`ylab'"'=="" {
-                local ylab "`v'"
+        forv j = 1/`g' {
+            local i 0
+            foreach v of local d {
+                local ++i
+                if "`overlay'"!="" local pos `j'
+                else               local pos `i'
+                qui replace `v' = `v' * `dscale' / `dmax' + `pos' if `by'==`j'
+                local tmp: word `i' of `q'
+                qui replace `tmp' = 2*`pos' - `v' if `by'==`j'
             }
         }
-        local ylabels `ylabels' `i' `"`ylab'"'
     }
-    if "`vertical'"!="" {
-        local ylabels xlabels(`ylabels')
-        local rvert horizontal
-    }
-    else {
-        local rhor horizontal
-        local ylabels ylabels(`ylabels', angle(horizontal)) yscale(reverse)
+    
+    // settings related to orientation
+    if "`vertical'"!="" local rvert horizontal
+    else                local rhor  horizontal
+    
+    // prepare pstyles
+    if "`pstyles'"=="" {
+        if "`overlay'"=="" local pstyles 1
+        else {
+            numlist "1/`=min(`k',15)'"
+            local pstyles `r(numlist)'
+        }
     }
     
     // fill plots
+    local key 0 // counter for start of legend keys
+    local finten fintensity(50)
+    if `"`fill2'"'=="" local finten fintensity(50)
+    else               local finten
     local pfill
     if "`fillselect'"!="" {
         local ii 0
         forv j = 1/`g' {
+            local psty `pstyles'
             forv i = 1/`k_`j'' {
                 local ++ii
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                if !`:list ii in fillselect' continue
+                local ++key
                 local qvar: word `i' of `q'
                 local dvar: word `i' of `d'
                 local atvar: word `i' of `at'
                 getcolr `i' `fcolor'
-                if "`fillselect'"!="" {
-                    if !`:list ii in fillselect' continue
-                }
                 local pfill `pfill' /*
-                    */ (rarea `qvar' `dvar' `atvar' if `by'==`j', `rvert' /*
-                    */ pstyle(p1) lc(%0) fintensity(50) `colr' `fill2')
+                    */ (rarea `qvar' `dvar' `atvar' if `by'==`j'`pdrop', /*
+                    */ `rvert' pstyle(p`p') lc(%0) `finten' `colr' `fill2')
             }
         }
     }
     else if "`fill'"!="" {
+        if "`line'"!="" local nokey nokey
+        else            local nokey
+        local psty `pstyles'
         forv i = 1/`k' {
+            if "`psty'"=="" local psty `pstyles'
+            gettoken p psty : psty
+            local ++key
             local qvar: word `i' of `q'
             local dvar: word `i' of `d'
             local atvar: word `i' of `at'
             getcolr `i' `fcolor'
             local pfill `pfill' /*
-                */ (rarea `qvar' `dvar' `atvar', `rvert' /*
-                */ pstyle(p1) lc(%0) fintensity(50) `colr' `fill2')
+                */ (rarea `qvar' `dvar' `atvar', cmissing(n) `rvert' /*
+                */ pstyle(p`p') lc(%0) `finten' `colr' `fill2')
         }
+        if "`line'"=="" local key 0 // use area plots in legend
     }
     
     // line plots
     local pline
-    if "`line'"=="" {
+    if "`line'"!="" {
+        local psty `pstyles'
         forv i = 1/`k' {
+            if "`psty'"=="" local psty `pstyles'
+            gettoken p psty : psty
             local qvar: word `i' of `q'
             local dvar: word `i' of `d'
             local atvar: word `i' of `at'
             getcolr `i' `lcolor'
             local pline `pline' /*
-                */ (rline `qvar' `dvar' `atvar', `rvert' /*
-                */ pstyle(p1) `colr' `line2')
+                */ (rline `qvar' `dvar' `atvar', cmissing(n) `rvert' /*
+                */ pstyle(p`p') `colr' `line2')
         }
     }
     
+    // plot positions for whiskers etc
+    if "`overlay'"!="" local pos `by'
+    else               local pos `id'
+    
     // whisker plots
     local pwhisk
-    if "`whiskers'"=="" {
+    if "`whiskers'"!="" {
+        local psty `pstyles'
         forv i = 1/`k' {
+            if "`psty'"=="" local psty `pstyles'
+            gettoken p psty : psty
             getcolr `i' `wcolor'
             local pwhisk `pwhisk' /*
-                */ (rspike `wlo' `wup' `id' if `id'==`i', `rhor' /*
-                */ pstyle(p1) `colr' `whiskers2')
+                */ (rspike `wlo' `p25' `pos' if `id'==`i', `rhor' /*
+                */ pstyle(p`p') `colr' `whiskers2') /*
+                */ (rspike `p75' `wup' `pos' if `id'==`i', `rhor' /*
+                */ pstyle(p`p') `colr' `whiskers2')
         }
     }
     
     // box plots
     local pbox
-    if "`box'"=="" {
+    if "`box'"!="" {
+        if `"`box2'"'=="" local boxwd lw(vvthick)
+        else              local boxwd
+        local psty `pstyles'
         forv i = 1/`k' {
+            if "`psty'"=="" local psty `pstyles'
+            gettoken p psty : psty
             getcolr `i' `bcolor'
             local pbox `pbox' /*
-                */ (rspike `p25' `p75' `id' if `id'==`i', `rhor' /*
-                */ pstyle(p1) lw(vvthick) `colr' `box2')
+                */ (rspike `p25' `p75' `pos' if `id'==`i', `rhor' /*
+                */ pstyle(p`p') `boxwd' `colr' `box2')
         }
     }
     
     // median plots
     local pmed
-    if "`median'"=="" {
-        if "`vertical'"!="" local vlist `med' `id' 
-        else                local vlist `id' `med' 
+    if "`median'"!="" {
+        if "`vertical'"!=""  local vlist `med' `pos'
+        else                 local vlist `pos' `med'
+        if "`box'"!=""       local msym ms(O) mlcolor(%0)
+        else                 local msym
+        if `"`median2'"'!="" local msym
+        local psty `pstyles'
         forv i = 1/`k' {
+            if "`psty'"=="" local psty `pstyles'
+            gettoken p psty : psty
             getcolr `i' `medcolor'
             if `"`colr'"'=="" {
-                if "`box'"=="" local colr color(white)
+                if "`box'"!="" & `"`median2'"'=="" local colr color(white)
             }
             local pbox `pbox' /*
-                */ (scatter `vlist' if `id'==`i', pstyle(p1) /*
-                */ `colr' ms(O) mlcolor(%0) `median2')
+                */ (scatter `vlist' if `id'==`i', pstyle(p`p') /*
+                */ `msym' `colr' `median2')
         }
     }
     
@@ -372,23 +424,78 @@ program violinplot
     if "`mean'"!="" {
         local msopts msymbol(pipe) msize(huge)
         if "`vertical'"!="" {
-            local vlist `avg' `id'
+            local vlist `avg' `pos'
             local msopts `msopts' msangle(90)
         }
-        else local vlist `id' `avg' 
+        else local vlist `pos' `avg'
+        if `"`mean2'"'!="" local msopts
+        local psty `pstyles'
         forv i = 1/`k' {
+            if "`psty'"=="" local psty `pstyles'
+            gettoken p psty : psty
             getcolr `i' `meancolor'
             local pmean `pmean' /*
-                */ (scatter `vlist' if `id'==`i', pstyle(p1) /*
+                */ (scatter `vlist' if `id'==`i', pstyle(p`p') /*
                 */ `msopts' `colr' `mean2')
         }
     }
     
+    // collect labels
+    local bylbls
+    forv j = 1/`g' {
+        gettoken bylab bylabels : bylabels
+        if `"`bylab'"'=="" {
+            local v: word 1 of `varlist_`j''
+            local bylab: var lab `v'
+            if `"`bylab'"'=="" local bylab "`v'"
+        }
+        local bylbls `bylbls' `j' `"`bylab'"'
+    }
+    if "`overlay'"=="" local key 0
+    local ylabels
+    forv i = 1/`k' {
+        gettoken ylab labels : labels
+        if `"`ylab'"'=="" {
+            local v: word `i' of `varlist'
+            local ylab: var lab `v'
+            if `"`ylab'"'=="" local ylab "`v'"
+        }
+        local ++key
+        local ylabels `ylabels' `key' `"`ylab'"'
+    }
+    
+    // assign labels
+    if "`overlay'"!="" {
+        // legend
+        if `k'>1 local legend legend(order(`ylabels'))
+        else     local legend legend(off)
+        // by option
+        local byopt
+        // axis labels
+        if `g'>1 local ylabels `"`bylbls'"'
+        else     local ylabels none
+        if "`vertical'"!="" local ylabels xlabels(`ylabels')
+        else local ylabels ylabels(`ylabels', angle(horizontal)) yscale(reverse)
+    }
+    else {
+        // legend
+        local legend legend(off)
+        // by option
+        if `g'>1 {
+            lab def `by' `bylbls', modify
+            lab val `by' `by'
+            local byopt by(`by', legend(off) note("") `byopts')
+        }
+        else local byopt
+        // axis labels
+        if `k'==1 local ylabels none
+        if "`vertical'"!="" local ylabels xlabels(`ylabels')
+        else local ylabels ylabels(`ylabels', angle(horizontal)) yscale(reverse)
+    }
+    
     // graph
-    if `g'>1 local byopt by(`by', legend(off) note("") `byopts')
-    else     local byopts
     twoway `pfill' `pline' `pwhisk' `pbox' `pmed' `pmean' /*
-        */ , legend(off) `ylabels' `byopt' `options'
+        */ , `legend' `ylabels' `byopt' `options'
 end
 
 program _parse_fill
@@ -416,9 +523,9 @@ program _parse_range
 end
 
 program _parse_dscale
-    syntax [anything] [, Individual Subgraph ]
-    if "`individual'"!="" & "`subgraph'"!="" {
-        di as err "dscale(): only one of individual and subgraph allowed"
+    syntax [anything] [, Individual Group ]
+    if "`individual'"!="" & "`group'"!="" {
+        di as err "dscale(): only one of individual and group allowed"
         exit 198
     }
     if `"`anything'"'!="" {
@@ -430,7 +537,7 @@ program _parse_dscale
     }
     else local anything 1
     c_local dscale `anything'
-    c_local dstype `individual' `subgraph'
+    c_local dstype `individual' `group'
 end
 
 program _parse_vlist_by
