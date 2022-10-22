@@ -1,4 +1,4 @@
-*! version 1.0.1  22oct2022  Ben Jann
+*! version 1.0.2  22oct2022  Ben Jann
 
 program violinplot
     version 15
@@ -384,7 +384,7 @@ program violinplot
     // box plots
     local pbox
     if "`box'"!="" {
-        if `"`box2'"'=="" local boxwd lw(vvthick)
+        if `"`box2'"'=="" local boxwd lw(vthick)
         else              local boxwd
         local psty `pstyles'
         forv i = 1/`k' {
@@ -402,7 +402,7 @@ program violinplot
     if "`median'"!="" {
         if "`vertical'"!=""  local vlist `med' `pos'
         else                 local vlist `pos' `med'
-        if "`box'"!=""       local msym ms(O) mlcolor(%0)
+        if "`box'"!=""       local msym msymbol(O) msize(vsmall)
         else                 local msym
         if `"`median2'"'!="" local msym
         local psty `pstyles'
@@ -411,7 +411,7 @@ program violinplot
             gettoken p psty : psty
             getcolr `i' `medcolor'
             if `"`colr'"'=="" {
-                if "`box'"!="" & `"`median2'"'=="" local colr color(white)
+                if "`box'"!="" & `"`median2'"'=="" local colr mcolor(white)
             }
             local pbox `pbox' /*
                 */ (scatter `vlist' if `id'==`i', pstyle(p`p') /*

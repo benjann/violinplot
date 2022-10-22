@@ -230,7 +230,7 @@
     rendering of the whiskers; see help {it:{help line_options}}. Note that
     {helpb twoway_rspike:rspike} is used to generate the box; type
     {cmd:box(recast(rbar))} to change the plot type to
-    {helpb twoway_rbar:rbar}. By default, {cmd:lwidth(vvthick)} is applied; this
+    {helpb twoway_rbar:rbar}. By default, {cmd:lwidth(vthick)} is applied; this
     is skipped if any {it:options} are specified.
 
 {phang}
@@ -238,8 +238,8 @@
     a marker for the median is printed or not. The default is to print the
     marker. Specify {it:options} to affect the rendering; see help
     {it:{help marker_options}}. By default, {cmd:msymbol(O)} and
-    {cmd:mlcolor(%0)} are applied unless {cmd:nobox} is specified, and
-    {cmd:color(white)} is applied unless {cmd:nobox} or {cmd:mcolor()} is
+    {cmd:msize(vsmall)} are applied unless {cmd:nobox} is specified, and
+    {cmd:mcolor(white)} is applied unless {cmd:nobox} or {cmd:medcolor()} is
     specified. These defaults are skipped if any {it:options} are specified.
 
 {phang}
@@ -313,8 +313,11 @@
 
         . {stata sysuse nlsw88}
         . {stata violinplot wage ttl_exp tenure}
-        . {stata violinplot wage ttl_exp tenure, mean nowhiskers nobox}
-        . {stata violinplot wage ttl_exp tenure, mean(msymbol(d) mcolor(gold))}
+        . {stata violinplot wage ttl_exp tenure, nobox}
+        . {stata violinplot wage ttl_exp tenure, mean}
+{p 8 12 2}
+        . {stata violinplot wage ttl_exp tenure, nobox mean(msymbol(X) msize(large) mcolor(maroon))}
+        {p_end}
 {p 8 12 2}
         . {stata violinplot wage ttl_exp tenure, box(recast(rbar) fintensity(50) barwidth(.15)) median(msymbol(d))}
         {p_end}

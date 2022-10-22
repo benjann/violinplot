@@ -26,6 +26,9 @@ Install dependencies from SSC:
 
 Main changes:
 
+    22oct2022 (version 1.0.2)
+    - changed default rendering of box and median (such that box is less thick)
+
     22oct2022 (version 1.0.1)
     - documentation added
     - overlay option added
