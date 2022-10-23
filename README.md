@@ -24,6 +24,46 @@ Install dependencies from SSC:
 
 ---
 
+Some examples (use of the `grytsle` package is made; type `ssc install grstyle` to install the package):
+
+    clear all
+    sysuse nlsw88
+    grstyle init
+    grstyle set imesh
+    grstyle set color sb muted
+    violinplot wage ttl_exp tenure, pdf(ll(0))
+
+![example 1](/images/1.png)
+
+    violinplot wage ttl_exp tenure, pdf(ll(0)) fill
+
+![example 2](/images/2.png)
+
+    violinplot wage ttl_exp tenure, pdf(ll(0)) fill vertical
+
+![example 3](/images/3.png)
+
+    separate ttl_exp, by(race) veryshortlabel
+    separate tenure, by(race) veryshortlabel
+    violinplot (ttl_exp?) (tenure?), pdf(ll(0)) fill bylabels(ttl_exp tenure) 
+    drop ttl_exp? tenure?
+
+![example 4](/images/4.png)
+
+    separate wage, by(union) veryshortlabel
+    violinplot wage?, pdf(ll(0)) noline fill(fcolor(%50) lcolor(%100)) overlay 
+    drop wage?
+
+![example 5](/images/5.png)
+
+    separate wage, by(industry) veryshortlabel
+    violinplot wage?*, color(plasma) fill nomedian nobox nowhiskers
+    drop wage?
+
+![example 6](/images/6.png)
+
+---
+
 Main changes:
 
     22oct2022 (version 1.0.2)
