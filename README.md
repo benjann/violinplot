@@ -15,6 +15,10 @@ Installation from GitHub:
     . net from https://raw.githubusercontent.com/benjann/violinplot/main/
     . net install violinplot, replace
 
+Installation from SSC:
+
+    . ssc install violinplot, replace
+
 Install dependencies from SSC:
 
     . ssc install dstat, replace
