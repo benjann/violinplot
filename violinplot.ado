@@ -1,4 +1,4 @@
-*! version 1.0.2  22oct2022  Ben Jann
+*! version 1.0.3  24oct2022  Ben Jann
 
 program violinplot
     version 15
@@ -218,16 +218,19 @@ program violinplot
             if `N' > _N qui set obs `N'
             mata: storepdf(`offset')
             // stats
-            qui dstat (mean med p25 p75 min max) `xvar', nose
+            qui dstat (mean med p25 p75) `xvar', nose
             mat `S' = e(b)
+            mat `S' = `S', `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
+                        */ `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])
             local ii = `offset' + `i'
             qui replace `id'  = `i'      in `ii'
             qui replace `avg' = `S'[1,1] in `ii'
             qui replace `med' = `S'[1,2] in `ii'
             qui replace `p25' = `S'[1,3] in `ii'
             qui replace `p75' = `S'[1,4] in `ii'
-            qui replace `wlo' = max(`S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), `S'[1,5]) in `ii'
-            qui replace `wup' = min(`S'[1,4]+1.5*(`S'[1,4]-`S'[1,3]), `S'[1,6]) in `ii'
+            su `xvar' if inrange(`xvar', `S'[1,5], `S'[1,6]), meanonly
+            qui replace `wlo' = r(min) in `ii'
+            qui replace `wup' = r(max) in `ii'
         }
         local N0 = `offset' + 1
         qui replace `by' = `j' in `N0'/`N'
