@@ -61,7 +61,7 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 ![example 5](/images/5.png)
 
     separate wage, by(industry) veryshortlabel
-    violinplot wage?*, color(plasma) fill nomedian nobox nowhiskers
+    violinplot wage?*, pdf(ll(0)) color(plasma) fill nomedian nobox nowhiskers
     drop wage?
 
 ![example 6](/images/6.png)
