@@ -70,6 +70,12 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    25oct2022 (version 1.0.4)
+    - weights were not taken into account; this is fixed
+    - option key() added
+    - option qdef() added
+    - option tight added
+    
     24oct2022 (version 1.0.3)
     - the definition used to compute the whiskers was not correct; this is fixed
 

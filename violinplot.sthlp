@@ -1,7 +1,7 @@
 {smcl}
-{* 22oct2022}{...}
+{* 25oct2022}{...}
 {hi:help violinplot}{...}
-{right:{browse "http://github.com/benjann/violinplot/"}}
+{right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
 
 {title:Title}
@@ -45,10 +45,16 @@
 {synopt :{cmdab:ds:cale(}{it:{help violinplot##dscale:spec}}{cmd:)}}change the
     scaling of the plotted PDFs
     {p_end}
+
+{syntab :Estimation}
+{synopt :{cmd:range(}{it:{help violinplot##range:spec}}{cmd:)}}restrict maximum density evaluation range
+    {p_end}
+{synopt :{cmd:tight}}use tight density evaluation grid
+    {p_end}
 {synopt :{cmdab:pdf:opts(}{it:{help dstat##densopts:options}}{cmd:)}}density estimation
     options passed through to {helpb dstat}
     {p_end}
-{synopt :{cmd:range(}{it:{help violinplot##range:spec}}{cmd:)}}restrict density evaluation range
+{synopt :{cmd:qdef(}{it:{help dstat##quant:#}}{cmd:)}}quantile definition to be used by {helpb dstat}
     {p_end}
 
 {syntab :Labels}
@@ -56,24 +62,26 @@
     {p_end}
 {synopt :{opt bylab:els(strlist)}}provide custom labels for subgraphs or ticks
     {p_end}
+{synopt :{cmd:key(}{it:{help violinplot##key:element}}{cmd:)}}plot element to be used in legend keys
+    {p_end}
 
 {syntab :Elements}
-{synopt :[{cmd:no}]{cmd:line}[{cmd:(}{it:{help connect_options:options}}{cmd:)}]}whether
+{synopt :[{cmd:no}]{cmd:line}[{cmd:(}{it:{help violinplot##line:options}}{cmd:)}]}whether
     PDF lines are printed; rendering of PDF lines
     {p_end}
 {synopt :{cmd:fill}[{cmd:(}{it:{help violinplot##fill:options}}{cmd:)}]}add
     shading; rendering of shading
     {p_end}
-{synopt :[{ul:{cmd:no}}]{cmdab:whisk:ers}[{cmd:(}{it:{help line_options:opts}}{cmd:)}]}whether
+{synopt :[{ul:{cmd:no}}]{cmdab:whisk:ers}[{cmd:(}{it:{help violinplot##whiskers:opts}}{cmd:)}]}whether
     whiskers are printed; rendering of whiskers
     {p_end}
-{synopt :[{cmd:no}]{cmd:box}[{cmd:(}{it:{help line_options:options}}{cmd:)}]}whether
+{synopt :[{cmd:no}]{cmd:box}[{cmd:(}{it:{help violinplot##box:options}}{cmd:)}]}whether
     box is printed; rendering of box
     {p_end}
-{synopt :[{ul:{cmd:no}}]{cmdab:med:ian}[{cmd:(}{it:{help marker_options:opts}}{cmd:)}]}whether
+{synopt :[{ul:{cmd:no}}]{cmdab:med:ian}[{cmd:(}{it:{help violinplot##median:opts}}{cmd:)}]}whether
     median is printed; rendering of median
     {p_end}
-{synopt :{cmd:mean}[{cmd:(}{it:{help marker_options:options}}{cmd:)}]}add marker for mean;
+{synopt :{cmd:mean}[{cmd:(}{it:{help violinplot##mean:options}}{cmd:)}]}add marker for mean;
     rendering of mean
     {p_end}
 
@@ -113,6 +121,12 @@
     {cmd:violinplot} draws so called violin plots that illustrate the distributions
     of the specified variables. A violin plot is an overlay of a (reflected) density
     estimate and a box plot (Hintze and Nelson 1998).
+
+{pstd}
+    Alternative implementations of violin plots are provided by command
+    {helpb vioplot} (Winter and Nichols 2008) and command {helpb violin}
+    (Steichen 1998, 2001). Furthermore, command {helpb joy_plot} (Rios-Avila
+    2022) provides functionality for violin plots.
 
 
 {title:Dependencies}
@@ -158,14 +172,11 @@
     determine the scaling by group. If {it:option} is omitted, the scaling is
     determined jointly across all variables.
 
-{phang}
-    {opt pdfopts(options)} provides density estimation options to be passed through to
-    {helpb dstat}; see {it:{help dstat##densopts:density_options}}
-    in help {helpb dstat}. The same options will be applied to all variables.
+{dlgtab:Estimation}
 
 {marker range}{...}
 {phang}
-    {cmd:range(}{it:from} [{it:to}]{cmd:)} limits the range across which
+    {cmd:range(}{it:from} [{it:to}]{cmd:)} limits the maximum range across which
     the PDF will be evaluated. This may be useful if there are outliers in the
     data. {it:from} can be specified as {cmd:.} (missing) to set no lower
     limit; {it:to} can be omitted or specified as {cmd:.} (missing) to set no
@@ -177,6 +188,24 @@
     {helpb dstat} uses a linear approximation grid for density estimation, and
     only few points of the grid may lie within the specified range. Option
     {cmd:pdfopts(exact)} will cause {helpb dstat} to use exact estimation.
+
+{phang}
+    {cmd:tight} limits the density evaluation to the range between the observed
+    minimum to the observed maximum of the data. By default, the range across
+    which the density is evaluated is slightly larger than the observed range
+    of the data. Specify {cmd:tight} to remove this extra padding. In any case,
+    any the evaluation grid will not go beyond the limits specified by
+    {cmd:range()}.
+
+{phang}
+    {opt pdfopts(options)} provides density estimation options to be passed through to
+    {helpb dstat}; see {it:{help dstat##densopts:density_options}}
+    in help {helpb dstat}. The same options will be applied to all variables.
+
+{phang}
+    {opt qdef(#)} sets the quantile definition to be used when computing the median
+    and the quartiles for the box and whiskers; see option {helpb dstat##quant:qdef()} in
+    help {helpb dstat}.
 
 {dlgtab:Labels}
 
@@ -191,8 +220,19 @@
     (if {cmd:overlay} is specified). Enclose labels that contain spaces in
     double quotes.
 
+{marker key}{...}
+{phang}
+    {opt key(element)} selects the plot element to be used in legend
+    keys. This is only relevant in cases in which a legend is
+    displayed. Depending on context, {it:element} is one of {cmdab:line},
+    {cmd:fill}, {cmdab:whisk:ers}, {cmd:box}, {cmdab:med:ian}, or {cmd:mean} (elements
+    that are not plotted will not be available). The default is
+    {cmd:key(line)} or, if option {cmd:noline} has been specified,
+    {cmd:key(fill)}.
+
 {dlgtab:Elements}
 
+{marker line}{...}
 {phang}
     [{cmd:no}]{cmd:line}[{cmd:(}{it:options}{cmd:)}] determines
     whether the PDF lines are printed or not. The default is to print the lines; type
@@ -215,14 +255,18 @@
     group). Option {cmd:select()} is not allowed if {cmd:noline} is
     specified. By default, option {cmd:fintensity(50)} is applied
     to the shading; this is skipped if any {it:{help area_options}} are
-    specified.
+    specified. Furthermore, option {cmd:lcolor(%0)} is applied, which will not
+    be skipped; specify, e.g., {cmd:fill(lcolor(%100)}} to override this
+    setting.
 
+{marker whiskers}{...}
 {phang}
     [{cmd:no}]{cmdab:whiskers}[{cmd:(}{it:options}{cmd:)}] determines
     whether the whiskers are printed or not. The default is to print the whiskers
     unless option {cmd:overlay} is specified. Specify {it:options} to affect the
     rendering of the whiskers; see help {it:{help line_options}}.
 
+{marker box}{...}
 {phang}
     [{cmd:no}]{cmd:box}[{cmd:(}{it:options}{cmd:)}] determines
     whether the IQR box is printed or not. The default is to print the box
@@ -233,6 +277,7 @@
     {helpb twoway_rbar:rbar}. By default, {cmd:lwidth(vthick)} is applied; this
     is skipped if any {it:options} are specified.
 
+{marker median}{...}
 {phang}
     [{cmd:no}]{cmdab:med:ian}[{cmd:(}{it:options}{cmd:)}] determines whether
     a marker for the median is printed or not. The default is to print the
@@ -242,6 +287,7 @@
     {cmd:mcolor(white)} is applied unless {cmd:nobox} or {cmd:medcolor()} is
     specified. These defaults are skipped if any {it:options} are specified.
 
+{marker mean}{...}
 {phang}
     {cmd:mean}[{cmd:(}{it:options}{cmd:)}] prints a marker for the mean. Specify
     {it:options} to affect the rendering; see help
@@ -404,6 +450,22 @@
     Hintze, J.L., R.D. Nelson
     (1998). {browse "https://doi.org/10.1080/00031305.1998.10480559":Violin Plots: A Box Plot-Density Trace Synergism.} The
     American Statistician 52:181-184.
+    {p_end}
+{phang}
+    Rios-Avila, F. (2022). JOY_PLOT: Stata module to produce joy plots. Available
+    from {browse "https://ideas.repec.org/c/boc/bocode/s459066.html"}.
+    {p_end}
+{phang}
+    Steichen, T.J. (1998). gr33: Violin plots. Stata Technical Bulletin 46:13-18.
+    {p_end}
+{phang}
+    Steichen, T.J. (2001). gr33.1: Violin plots for Stata 6 and 7. Stata Technical Bulletin 61:10.
+    {p_end}
+{phang}
+    Winter, N., A. Nichols (2008). VIOPLOT: Stata module to produce violin plots
+    with current graphics. Available from
+    {browse "https://ideas.repec.org/c/boc/bocode/s456902.html"}.
+    {p_end}
 
 
 {title:Author}
@@ -416,7 +478,7 @@
 
 {pmore}
     Jann, B. (2022). violinplot: Stata module to draw violin plots. Available from
-    {browse "http://github.com/benjann/violinplot/"}.
+    {browse "https://github.com/benjann/violinplot/"}.
 
 
 {title:Also see}

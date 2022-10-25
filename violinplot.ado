@@ -1,13 +1,19 @@
-*! version 1.0.3  24oct2022  Ben Jann
+*! version 1.0.4  25oct2022  Ben Jann
 
 program violinplot
     version 15
     
     // syntax
     syntax [anything] [if] [in] [pw iw fw] [, ///
-        PDFopts(str) ///
-        range(numlist max=2 missingok) ///
+        VERTical HORizontal ///
+        overlay ///
         DScale(str) ///
+        PDFopts(str) tight ///
+        qdef(passthru) ///
+        range(numlist max=2 missingok) ///
+        LABels(str asis) ///
+        BYLABels(str asis) ///
+        key(str) ///
         NOLINE     LINE     LINE2(str)     LColor(str) ///
         NOFILL     FILL     FILL2(str)     FColor(str) ///
         NOWHISKers WHISKers WHISKers2(str) WColor(str) ///
@@ -16,10 +22,7 @@ program violinplot
         NOMEAN     MEAN     MEAN2(str)     MEANColor(str) ///
         COLor(str) ///
         PSTYles(numlist int >0) ///
-        VERTical HORizontal ///
-        overlay ///
-        LABels(str asis) ///
-        BYLABels(str asis) BYOPTs(str) * ]
+        BYOPTs(str) * ]
     // orientation
     if "`vertical'"!="" & "`horizontal'"!="" {
         di as err "vertical and horizontal not both allowed"
@@ -96,8 +99,19 @@ program violinplot
             exit 198
         }
     }
-    // list of plot types
+    // list of plot types / determine key
     local plotlist `fill' `line' `whiskers' `box' `median' `mean'
+    _parse_key, `key'
+    if "`key'"!="" {
+        if !`: list key in plotlist' {
+            di as err "key(): `key' not available"
+            exit 198
+        }
+    }
+    else {
+        if "`line'"!="" local key "line"
+        else            local key "fill"
+    }
     // further option
     _parse_range `range' // returns lb ub
     _parse_dscale `dscale' // returns dscale and dstype
@@ -153,10 +167,12 @@ program violinplot
     tempname ecurrent
     _estimates hold `ecurrent', restore nullok
     
-    // sample
+    // sample and weights
     marksample touse, novarlist
     preserve
     qui keep if `touse'
+    if "`weight'"!="" local wgt `"[`weight'`exp']"'
+    else              local wgt
     
     // prepare variables for bygroup, id, mean, med, box, whiskers
     tempvar by id avg med p25 p75 wlo wup
@@ -194,31 +210,13 @@ program violinplot
             // density estimate
             local dvar:    word `i' of `d'
             local atvar:   word `i' of `at'
-            qui dstat pdf `xvar', nose `pdfopts'
-            if "`lb'`ub'"!="" {
-                // apply range if necessary
-                local ll
-                local ul
-                local a = el(e(at),1,1)
-                local b = el(e(at),1,colsof(e(b)))
-                if "`lb'"!="" {
-                    if `lb'>`a' local ll `lb'
-                }
-                if "`ub'"!="" {
-                    if `ub'<`b' local ul `ub'
-                }
-                if "`ll'`ul'"!="" {
-                    if      "`ll'"=="" local ll `a'
-                    else if "`ul'"=="" local ul `b'
-                    qui dstat pdf `xvar', nose range(`ll' `ul') `pdfopts'
-                }
-            }
+            Fit_PDF "`xvar'" `"`wgt'"' "`tight'" "`lb'" "`ub'" `"`pdfopts'"'
             local n = max(`n', colsof(e(b)))
             local N = `offset' + `n'
             if `N' > _N qui set obs `N'
             mata: storepdf(`offset')
             // stats
-            qui dstat (mean med p25 p75) `xvar', nose
+            qui dstat (mean med p25 p75) `xvar' `wgt', nose `qdef'
             mat `S' = e(b)
             mat `S' = `S', `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
                         */ `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])
@@ -302,8 +300,11 @@ program violinplot
         }
     }
     
+    // plot counter (for legend)
+    local keys 0
+    local ikey 0
+    
     // fill plots
-    local key 0 // counter for start of legend keys
     local finten fintensity(50)
     if `"`fill2'"'=="" local finten fintensity(50)
     else               local finten
@@ -317,7 +318,7 @@ program violinplot
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 if !`:list ii in fillselect' continue
-                local ++key
+                local ++keys
                 local qvar: word `i' of `q'
                 local dvar: word `i' of `d'
                 local atvar: word `i' of `at'
@@ -329,13 +330,10 @@ program violinplot
         }
     }
     else if "`fill'"!="" {
-        if "`line'"!="" local nokey nokey
-        else            local nokey
         local psty `pstyles'
         forv i = 1/`k' {
             if "`psty'"=="" local psty `pstyles'
             gettoken p psty : psty
-            local ++key
             local qvar: word `i' of `q'
             local dvar: word `i' of `d'
             local atvar: word `i' of `at'
@@ -344,10 +342,11 @@ program violinplot
                 */ (rarea `qvar' `dvar' `atvar', cmissing(n) `rvert' /*
                 */ pstyle(p`p') lc(%0) `finten' `colr' `fill2')
         }
-        if "`line'"=="" local key 0 // use area plots in legend
+        local keys = `keys' + `k'
     }
     
     // line plots
+    if "`key'"=="line" local ikey `keys'
     local pline
     if "`line'"!="" {
         local psty `pstyles'
@@ -362,6 +361,7 @@ program violinplot
                 */ (rline `qvar' `dvar' `atvar', cmissing(n) `rvert' /*
                 */ pstyle(p`p') `colr' `line2')
         }
+        local keys = `keys' + `k'
     }
     
     // plot positions for whiskers etc
@@ -369,6 +369,7 @@ program violinplot
     else               local pos `id'
     
     // whisker plots
+    if "`key'"=="whiskers" local ikey `keys'
     local pwhisk
     if "`whiskers'"!="" {
         local psty `pstyles'
@@ -382,9 +383,11 @@ program violinplot
                 */ (rspike `p75' `wup' `pos' if `id'==`i', `rhor' /*
                 */ pstyle(p`p') `colr' `whiskers2')
         }
+        local keys = `keys' + 2*`k'
     }
     
     // box plots
+    if "`key'"=="box" local ikey `keys'
     local pbox
     if "`box'"!="" {
         if `"`box2'"'=="" local boxwd lw(vthick)
@@ -398,9 +401,11 @@ program violinplot
                 */ (rspike `p25' `p75' `pos' if `id'==`i', `rhor' /*
                 */ pstyle(p`p') `boxwd' `colr' `box2')
         }
+        local keys = `keys' + `k'
     }
     
     // median plots
+    if "`key'"=="median" local ikey `keys'
     local pmed
     if "`median'"!="" {
         if "`vertical'"!=""  local vlist `med' `pos'
@@ -420,9 +425,11 @@ program violinplot
                 */ (scatter `vlist' if `id'==`i', pstyle(p`p') /*
                 */ `msym' `colr' `median2')
         }
+        local keys = `keys' + `k'
     }
     
     // mean plots
+    if "`key'"=="mean" local ikey `keys'
     local pmean
     if "`mean'"!="" {
         local msopts msymbol(pipe) msize(huge)
@@ -441,6 +448,7 @@ program violinplot
                 */ (scatter `vlist' if `id'==`i', pstyle(p`p') /*
                 */ `msopts' `colr' `mean2')
         }
+        local keys = `keys' + `k'
     }
     
     // collect labels
@@ -454,7 +462,7 @@ program violinplot
         }
         local bylbls `bylbls' `j' `"`bylab'"'
     }
-    if "`overlay'"=="" local key 0
+    if "`overlay'"=="" local ikey 0 // no legend
     local ylabels
     forv i = 1/`k' {
         gettoken ylab labels : labels
@@ -463,8 +471,8 @@ program violinplot
             local ylab: var lab `v'
             if `"`ylab'"'=="" local ylab "`v'"
         }
-        local ++key
-        local ylabels `ylabels' `key' `"`ylab'"'
+        local ++ikey
+        local ylabels `ylabels' `ikey' `"`ylab'"'
     }
     
     // assign labels
@@ -505,6 +513,16 @@ program _parse_fill
     syntax [, SELect(numlist int >0) *]
     c_local fillselect `select'
     c_local fill2 `options'
+end
+
+program _parse_key
+    syntax [, line fill WHISKers box MEDian mean ]
+    local key `line' `fill' `whiskers' `box' `median' `mean'
+    if `:list sizeof key'>1 {
+        di as err "key(): too many elements specified"
+        exit 198
+    }
+    c_local key `key'
 end
 
 program _parse_range
@@ -572,6 +590,42 @@ program getcolr
     local color: word `i' of `colors'
     if `"`color'"'!=""  local color color(`"`color'"')
     c_local colr `"`color'"'
+end
+
+program Fit_PDF
+    args xvar wgt tight lb ub pdfopts
+    if "`tight'"!="" {
+        su `xvar', meanonly
+        local ll = r(min)
+        local ul = r(max)
+        if "`lb'"!="" {
+            if `lb'>`ll' local ll `lb'
+        }
+        if "`ub'"!="" {
+            if `ub'<`ul' local ul `ub'
+        }
+        qui dstat pdf `xvar' `wgt', nose range(`ll' `ul') `pdfopts'
+    }
+    else {
+        qui dstat pdf `xvar' `wgt', nose `pdfopts'
+        if "`lb'`ub'"!="" { // apply range() if necessary
+            local ll
+            local ul
+            local a = el(e(at),1,1)
+            local b = el(e(at),1,colsof(e(b)))
+            if "`lb'"!="" {
+                if `lb'>`a' local ll `lb'
+            }
+            if "`ub'"!="" {
+                if `ub'<`b' local ul `ub'
+            }
+            if "`ll'`ul'"!="" {
+                if      "`ll'"=="" local ll `a'
+                else if "`ul'"=="" local ul `b'
+                qui dstat pdf `xvar' `wgt', nose range(`ll' `ul') `pdfopts'
+            }
+        }
+    }
 end
 
 version 15
