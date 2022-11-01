@@ -1,5 +1,5 @@
 {smcl}
-{* 25oct2022}{...}
+{* 01nov2022}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -12,7 +12,7 @@
 {title:Syntax}
 
 {pstd}
-    Single subgraph / single overlay:
+    Syntax 1: Single group of outcome variables
 
 {p 8 15 2}
     {cmd:violinplot} [{cmd:(}]{varlist}[{cmd:)}]
@@ -22,7 +22,7 @@
     ]
 
 {pstd}
-    Multiple subgraphs / multiple overlays:
+    Syntax 2: Multiple groups of outcome variables
 
 {p 8 15 2}
     {cmd:violinplot} {cmd:(}{varlist}{cmd:)} {cmd:(}{varlist}{cmd:)} [{it:...}]
@@ -40,29 +40,54 @@
     {p_end}
 {synopt :{opt hor:izontal}}horizontal plot; default if {cmd:overlay} is omitted
     {p_end}
-{synopt :{opt overlay}}create overlays rather than subgraphs
+{synopt :{opt overlay}}create overlays rather than separate items
     {p_end}
-{synopt :{cmdab:ds:cale(}{it:{help violinplot##dscale:spec}}{cmd:)}}change the
-    scaling of the plotted PDFs
+{synopt :{opt asover}}treat variable groups as over categories
+    {p_end}
+{synopt :{cmd:over(}{it:{help violinplot##over:spec}}{cmd:)}}display results by
+    categories of over-variable
+    {p_end}
+{synopt :{opt gap(#)}}size of extra gap between over categories; default is 0.5
+    {p_end}
+{synopt :{opt atover}}use values of over categories as plot positions
+    {p_end}
+{synopt :{opt swap}}swap variables and over categories
+    {p_end}
+{synopt :{opt nostack}}do not use stacked axis labels, use a legend
+    {p_end}
+{synopt :{cmd:by(}{it:{help violinplot##by:spec}}{cmd:)}}create subgraphs by
+    categories of by-variable
     {p_end}
 
 {syntab :Estimation}
-{synopt :{cmd:range(}{it:{help violinplot##range:spec}}{cmd:)}}restrict maximum density evaluation range
+{synopt :{cmdab:ds:cale(}{it:{help violinplot##dscale:spec}}{cmd:)}}change the
+    scaling of the plotted PDFs
     {p_end}
 {synopt :{cmd:tight}}use tight density evaluation grid
     {p_end}
-{synopt :{cmdab:pdf:opts(}{it:{help dstat##densopts:options}}{cmd:)}}density estimation
-    options passed through to {helpb dstat}
+{synopt :{cmd:range(}{it:{help violinplot##range:spec}}{cmd:)}}restrict maximum
+    density evaluation range
     {p_end}
-{synopt :{cmd:qdef(}{it:{help dstat##quant:#}}{cmd:)}}quantile definition to be used by {helpb dstat}
+{synopt :{cmdab:pdf:opts(}{it:{help dstat##densopts:options}}{cmd:)}}density
+    estimation options passed through to {helpb dstat}
+    {p_end}
+{synopt :{cmd:qdef(}{it:{help dstat##quant:#}}{cmd:)}}quantile definition to be
+    used by {helpb dstat}
+    {p_end}
+{synopt :{opt cw}}omit observations with missing value on any outcome variable
     {p_end}
 
 {syntab :Labels}
-{synopt :{opt lab:els(strlist)}}provide custom labels for ticks or legend keys
+{synopt :{opt lab:els(strlist)}}provide custom labels for outcome variables
     {p_end}
-{synopt :{opt bylab:els(strlist)}}provide custom labels for subgraphs or ticks
+{synopt :{opt olab:els(strlist)}}provide custom labels for over categories
     {p_end}
-{synopt :{cmd:key(}{it:{help violinplot##key:element}}{cmd:)}}plot element to be used in legend keys
+{synopt :{opt bylab:els(strlist)}}provide custom labels for subgraphs
+    {p_end}
+{synopt :{opt nolab:el}}use names and values, not labels
+    {p_end}
+{synopt :{cmd:key(}{it:{help violinplot##key:element}}{cmd:)}}plot element to be
+    used in legend keys
     {p_end}
 
 {syntab :Elements}
@@ -87,7 +112,7 @@
 
 {syntab :Colors}
 {synopt :{cmdab:col:or(}{it:{help violinplot##color:spec}}{cmd:)}}assign colors
-    to variables, affecting all elements
+    to results, affecting all elements
     {p_end}
 {synopt :{opt lc:olor(spec)}}like {helpb violinplot##color:color()}, but only affecting PDF lines
     {p_end}
@@ -103,10 +128,14 @@
     {p_end}
 
 {syntab :Other}
-{synopt :{cmdab:psty:les(}{it:{help violinplot##pstyles:numlist}})}assign plot styles to variables
+{synopt :{cmdab:psty:les(}{it:{help violinplot##pstyles:numlist}})}assign plot styles to results
+    {p_end}
+{synopt :{cmd:p}{it:#}{cmd:(}{it:options}{cmd:)}}options passed through to plots using plot style #
     {p_end}
 {synopt :{cmdab:byopt:s(}{it:{help by_option:byopts}}{cmd:)}}options passed through
     to {helpb by_option:by()}
+    {p_end}
+{synopt :{cmdab:addplot(}{it:{help addplot_option:plot}}{cmd:)}}add other plots to the graph
     {p_end}
 {synopt :{it:{help twoway_options}}}general options passed through to {helpb graph twoway}
     {p_end}
@@ -118,9 +147,21 @@
 {title:Description}
 
 {pstd}
-    {cmd:violinplot} draws so called violin plots that illustrate the distributions
-    of the specified variables. A violin plot is an overlay of a (reflected) density
-    estimate and a box plot (Hintze and Nelson 1998).
+    {cmd:violinplot} draws so called violin plots that illustrate the
+    distributions of the specified outcome variables. A violin plot is an
+    overlay of a (reflected) density estimate and a box plot (Hintze and Nelson
+    1998).
+
+{pstd}
+    Technical note: By default (unless option {cmd:atover} is specified),
+    {cmd:violinplot} deactivates ticks and grid lines on the categorical axis
+    and sets the gap between the labels and the axis to {cmd:tiny} (mimicking
+    the behavior of {helpb graph box}). To print the ticks and gridlines and
+    to restore the default gap as used by {helpb graph twoway}, specify
+    {cmd:ylabel(, tick grid labgap(half_tiny))} (if in {cmd:horizontal} mode;
+    in vertical mode use the {cmd:xlabel()} option). If your graph contains
+    subgraphs, you additionally need to specify {cmd:byopts(iytick)} or
+    {cmd:byopts(ixtick)}.
 
 {pstd}
     Alternative implementations of violin plots are provided by command
@@ -132,8 +173,8 @@
 {title:Dependencies}
 
 {pstd}
-    {cmd:violinplot} requires {helpb dstat}, {helpb moremata}, {helpb palettes}, and {helpb colrspace}. To install
-    these packages, type:
+    {cmd:violinplot} requires {helpb dstat}, {helpb moremata}, {helpb palettes},
+    and {helpb colrspace}. To install these packages, type:
 
         . {stata ssc install dstat}
         . {stata ssc install moremata}
@@ -154,10 +195,93 @@
     omitted.
 
 {phang}
-    {opt overlay} overlays the results from the individual variables in a group
-    and does not create subgraphs if there are multiple groups. The default is to print the
-    results from the individual variables next to each other and to create a
-    separate subgraph for each group.
+    {opt overlay} overlays the results from several variables or subpopulations. The
+    default is to print each result individually. Overlay implies {cmd:vertical},
+    {cmd:nowhiskers}, and {cmd:nobox}.
+
+{phang}
+    {opt asover} treats variable groups (Syntax 2) as over categories. The default
+    is create a separate subgraph for each variable group. {cmd:asover} and
+    {cmd:over()} are not both allowed.
+
+{marker over}{...}
+{phang}
+    {cmd:over(}{varname}[{cmd:,} {it:options}]{cmd:)} displays subpopulation
+    results by levels of {it:varname}. {it:varname} may be numeric or string. Options
+    are as follows.
+
+{phang2}
+    {cmdab:tot:al}[{cmd:(}{it:str}{cmd:)}] includes total results across all
+    subpopulations. Optional {it:str} specifies a custom label; default is "{cmd:(total)}".
+
+{phang2}
+    {cmdab:miss:ing}[{cmd:(}{it:str}{cmd:)}] includes results from subpopulations for which
+    {it:varname} is missing; each type of missing value ({cmd:.}, {cmd:.a}, {cmd:.b}, etc.)
+    will be treated as a separate category. The default is to exclude missing
+    values. Optional {it:str} specifies a custom label for system missing ({cmd:.});
+    default is "{cmd:(missing)}".
+
+{phang}
+    {opt gap(#)} specifies the size of the extra gap inserted between clusters of
+    results that are grouped together within the same subgraph. This is only relevant
+    if there are multiple outcome variables and multiple over categories (and if {cmd:overlay} is
+    not specified). The default extra gap is 0.5 (i.e. half the size of the space
+    each result consumes).
+
+{phang}
+    {opt atover} uses the values of the over variable to determine the plot
+    positions of the results rather than placing them along a categorical
+    axis. {cmd:atover} requires {cmd:over()} and is only allowed in selected
+    situations. For example, {opt atover} cannot be combined with option {cmd:swap}
+    or with over suboptions {cmd:total} and {cmd:missing}, and the over variable
+    must be numeric. Furthermore, {opt atover} is allowed with multiple outcome variables
+    only of {cmd:overlay} is specified; likewise, {opt atover} is allowed with a
+    single outcome variable only if {cmd:overlay} is omitted.
+
+{pmore}
+    The maximum space consumed by an individual results is set to one unit by default, which
+    may not be appropriate if {cmd:atover} is specified (depending scaling of
+    the over variable). Use option {cmd:dscale()} to change the default;
+    for example, type {cmd:dscale(2)} to consume at most two units; type {cmd:dscale(0.5)}
+    to consume at most half a unit.
+
+{phang}
+    {opt swap} changes the arrangement of results. The default is to group
+    results from multiple outcome variables by over category. Specify
+    {cmd:swap} to group results from over categories by outcome variable.
+
+{phang}
+    {opt nostack} causes a legend to be created for the different results within
+    groups of results. The default is to label each result individually on the
+    categorical axis, using two levels of labels. This is only relevant
+    if there are multiple outcome variables and multiple over
+    categories. {cmd:nostack} also assigns different plot styles to the
+    results.
+
+{marker by}{...}
+{phang}
+    {cmd:by(}{varname}[{cmd:,} {it:options}]{cmd:)} displays separate subgraphs
+    for subpopulation results by levels of {it:varname}. {it:varname} may be
+    numeric or string. Option {cmd:by()} is only allowed in Syntax 1 (single group
+    of outcome variables; or in Syntax 2 if option {cmd:asover} is specified). Options are
+    as follows.
+
+{phang2}
+    {cmdab:tot:al}[{cmd:(}{it:str}{cmd:)}] includes total results across all
+    subpopulations. Optional {it:str} specifies a custom label; default is "{cmd:(total)}".
+
+{phang2}
+    {cmdab:miss:ing}[{cmd:(}{it:str}{cmd:)}] includes results from subpopulations for which
+    {it:varname} is missing; each type of missing value ({cmd:.}, {cmd:.a}, {cmd:.b}, etc.)
+    will be treated as a separate category. The default is to exclude missing
+    values. Optional {it:str} specifies a custom label for system missing ({cmd:.});
+    default is "{cmd:(missing)}".
+
+{phang2}
+    {it:byopts} are options passed through to graph's {helpb by()} option, which
+    is internally used to generate the subgraphs; see help {it:{help by_option}}.
+
+{dlgtab:Estimation}
 
 {marker dscale}{...}
 {phang}
@@ -167,12 +291,22 @@
 
 {pmore}
     where {it:#}>0 is a custom factor by which the default scaling will
-    be multiplied and {it:option} is either {cmdab:i:ndividual} to determine
-    the scaling for each variable individually or {cmdab:g:roup} to
-    determine the scaling by group. If {it:option} is omitted, the scaling is
-    determined jointly across all variables.
+    be multiplied and {it:option} is {cmdab:i:ndividual} to determine
+    the scaling for each result individually, {cmdab:g:roup} to determine the
+    scaling by group of results (i.e. by clusters of results that are grouped
+    together within the graph), {cmdab:p:lot} to determine the
+    scaling by plot series (i.e. results that use the same plot style across
+    clusters), or {cmdab:s:ubgraph} to determine the
+    scaling by subgraph. The default is to determine the scaling
+    jointly across all results.
 
-{dlgtab:Estimation}
+{phang}
+    {cmd:tight} limits the density evaluation grid to the range between the observed
+    minimum to the observed maximum of the relevant data. By default, the range across
+    which the density is evaluated is slightly larger than the observed range
+    of the data. Specify {cmd:tight} to remove this extra padding. In any case,
+    the evaluation grid will not go beyond the limits specified by
+    {cmd:range()}.
 
 {marker range}{...}
 {phang}
@@ -183,42 +317,48 @@
     upper limit.
 
 {pmore}
-    Depending on situation, it may be necessary to specify
-    {cmd:pdfopts(exact)} if {cmd:range()} is applied. By default,
-    {helpb dstat} uses a linear approximation grid for density estimation, and
-    only few points of the grid may lie within the specified range. Option
-    {cmd:pdfopts(exact)} will cause {helpb dstat} to use exact estimation.
-
-{phang}
-    {cmd:tight} limits the density evaluation to the range between the observed
-    minimum to the observed maximum of the data. By default, the range across
-    which the density is evaluated is slightly larger than the observed range
-    of the data. Specify {cmd:tight} to remove this extra padding. In any case,
-    any the evaluation grid will not go beyond the limits specified by
-    {cmd:range()}.
+    By default, fast density estimation based on an approximation grid is used
+    by {cmd:violinplot} to obtain the PDF. However, if {cmd:range()} results
+    in an evaluation range that is less than half of the original (unrestricted)
+    evaluation range, {cmd:violinplot} switches to exact estimation of the affected PDF
+    to prevent approximation error from becoming visible. Specify option {cmd:pdfopts(exact)}
+    if you want to apply exact estimation in any case.
 
 {phang}
     {opt pdfopts(options)} provides density estimation options to be passed through to
     {helpb dstat}; see {it:{help dstat##densopts:density_options}}
-    in help {helpb dstat}. The same options will be applied to all variables.
+    in help {helpb dstat}. The same options will be applied used for all results.
 
 {phang}
     {opt qdef(#)} sets the quantile definition to be used when computing the median
     and the quartiles for the box and whiskers; see option {helpb dstat##quant:qdef()} in
     help {helpb dstat}.
 
+{phang}
+    {opt cw} specifies casewise deletion. If {cmd:cw} is specified, observations
+    for which any of the outcome variables are missing are ignored. The default
+    is to determine the estimation sample for each variable individually.
+
 {dlgtab:Labels}
 
 {phang}
     {opt lab:els(strlist)} provides a space separated list of custom labels
-    for the ticks (if {cmd:overlay} is omitted) or the legend keys (if {cmd:overlay}
-    is specified). Enclose labels that contain spaces in double quotes.
+    for the outcome variables. Enclose labels that
+    contain spaces in double quotes.
+
+{phang}
+    {opt olabels(strlist)} provides a space separated list of custom labels
+    for the over categories. If {cmd:asover} is specified (Syntax 2),
+    {cmd:olabels()} provides labels for the outcome variable groups. Enclose
+    labels that contain spaces in double quotes.
 
 {phang}
     {opt bylabels(strlist)} provides a space separated list of custom titles
-    for the subgraphs (if {cmd:overlay} is omitted) or labels for the ticks
-    (if {cmd:overlay} is specified). Enclose labels that contain spaces in
+    for the subgraphs. Enclose labels that contain spaces in
     double quotes.
+
+{phang}
+    {opt nolabel} uses names and values rather variable labels and value labels.
 
 {marker key}{...}
 {phang}
@@ -244,19 +384,19 @@
     {cmd:fill}[{cmd:(}{it:options}{cmd:)}] adds shading to the PDF. {it:options}
     are
 
-            {opth sel:ect(numlist)} {it:{help area_options}}
+            {opth s:elect(numlist)} {it:{help area_options}}
 
 {pmore}
-    where {cmd:select()} restricts the set of variables to be affected
+    where {cmd:select()} restricts the set of results to be affected
     and {it:{help area_options}} determine the rendering of the shading. By
-    default, shading is added to all variables if option {cmd:fill} is
+    default, shading is added to all results if option {cmd:fill} is
     specified. Type, for example, {cmd:select(2 5)} to add shading only to
-    the 2nd and 5th variable (the counting is across all variables, not within
-    group). Option {cmd:select()} is not allowed if {cmd:noline} is
+    the 2nd and 5th result (the counting is across all displayed results,
+    not within groups or subgraphs). Option {cmd:select()} is not allowed if {cmd:noline} is
     specified. By default, option {cmd:fintensity(50)} is applied
     to the shading; this is skipped if any {it:{help area_options}} are
     specified. Furthermore, option {cmd:lcolor(%0)} is applied, which will not
-    be skipped; specify, e.g., {cmd:fill(lcolor(%100)}} to override this
+    be skipped; specify, e.g., {cmd:fill(lcolor(%100)} to override this
     setting.
 
 {marker whiskers}{...}
@@ -271,18 +411,21 @@
     [{cmd:no}]{cmd:box}[{cmd:(}{it:options}{cmd:)}] determines
     whether the IQR box is printed or not. The default is to print the box
     unless option {cmd:overlay} is specified. Specify {it:options} to affect the
-    rendering of the whiskers; see help {it:{help line_options}}. Note that
-    {helpb twoway_rspike:rspike} is used to generate the box; type
-    {cmd:box(recast(rbar))} to change the plot type to
-    {helpb twoway_rbar:rbar}. By default, {cmd:lwidth(vthick)} is applied; this
-    is skipped if any {it:options} are specified.
+    rendering of the whiskers; see help {it:{help line_options}}. By default,
+    {cmd:lwidth(vthick)} is applied; this is skipped if any
+    {it:options} are specified.
+
+{pmore}
+    Note that plot type {helpb twoway_rspike:rspike} is used to generate the
+    box; for example, type {cmd:box(recast(rbar) barwidth(0.1))} to change the
+    plot type to {helpb twoway_rbar:rbar} and use a bar width of 0.1. 
 
 {marker median}{...}
 {phang}
     [{cmd:no}]{cmdab:med:ian}[{cmd:(}{it:options}{cmd:)}] determines whether
     a marker for the median is printed or not. The default is to print the
     marker. Specify {it:options} to affect the rendering; see help
-    {it:{help marker_options}}. By default, {cmd:msymbol(O)} and
+    {it:{help marker_options}}. By default, options {cmd:msymbol(O)} and
     {cmd:msize(vsmall)} are applied unless {cmd:nobox} is specified, and
     {cmd:mcolor(white)} is applied unless {cmd:nobox} or {cmd:medcolor()} is
     specified. These defaults are skipped if any {it:options} are specified.
@@ -291,17 +434,17 @@
 {phang}
     {cmd:mean}[{cmd:(}{it:options}{cmd:)}] prints a marker for the mean. Specify
     {it:options} to affect the rendering; see help
-    {it:{help marker_options}}. By default, {cmd:msymbol(pipe)},
+    {it:{help marker_options}}. By default, options {cmd:msymbol(pipe)},
     {cmd:msize(huge)}, and, depending on context, {cmd:msangle(90)} are
-    applied; this is skipped if any {it:options} are specified.
+    applied; these defaults are skipped if any {it:options} are specified.
 
 {dlgtab:Colors}
 
 {marker color}{...}
 {phang}
-    {opt color(spec)} assigns colors to the variables, affecting all elements
+    {opt color(spec)} assigns colors to the results, affecting all elements
     of the violin plot (except the median depending on context). The colors will
-    be recycled across groups. {it:spec} is
+    be recycled across groups of results and across subgraphs. {it:spec} is
 
             {it:{help colorpalette##palette:palette}} [{cmd:,} {it:{help colorpalette##opts:palette_options}}]
 
@@ -335,17 +478,25 @@
 {marker pstyles}{...}
 {phang}
     {opth pstyles(numlist)} determines the plot styles applied to the
-    variables. If {cmd:pstyles()} is omitted, the default is to use style {cmd:p1}
-    for all variables or, if {cmd:overlay} is specified, to use consecutive
-    styles across the variables in each group (i.e. {cmd:p1} for the first variable,
-    {cmd:p2} for the second variables, etc.). For example, specify
-    {cmd:pstyles(5 3 7)} to use {cmd:p5} for the first variable, {cmd:p3} for the second
-    variable, and {cmd:p7} for the third variable. The styles will be recycled
-    of {it:{help numlist}} contains fewer elements than there are variables per group.
+    results. If {cmd:pstyles()} is omitted, the default is to use style {cmd:p1}
+    for all results or, if {cmd:overlay} or {cmd:nostack} is specified, to use consecutive
+    styles across groups of results (i.e. {cmd:p1} for the first result,
+    {cmd:p2} for the second result, etc.). For example, specify
+    {cmd:pstyles(5 3 7)} to use {cmd:p5} for the first result, {cmd:p3} for the second
+    result, and {cmd:p7} for the third result. The styles will be recycled
+    if {it:{help numlist}} contains fewer elements than there are result per group.
+
+{phang}
+    {cmd:p}{it:#}{cmd:(}{it:options}{cmd:)} are options to be passed through
+    to the #th result per group.
 
 {phang}
     {opt byopts(byopts)} are options passed through to the {cmd:by()} option,
     which is internally used to generate subgraphs; see help {it:{help by_option}}.
+
+{phang}
+    {opt addplot(plot)} allows adding more {helpb graph twoway} plots to the graph;
+    see help {it:{help addplot_option}}.
 
 {phang}
     {it:twoway_options} are general options passed through to {helpb graph twoway}; see
@@ -369,6 +520,9 @@
         {p_end}
         . {stata violinplot wage ttl_exp tenure, vertical}
         . {stata violinplot wage ttl_exp tenure, pstyles(1/3)}
+{p 8 12 2}
+        . {stata violinplot wage ttl_exp tenure, range(. 31) plotregion(margin(r=0))}
+        {p_end}
         . {stata violinplot wage ttl_exp tenure, fill}
         . {stata violinplot wage ttl_exp tenure, noline}
         . {stata violinplot wage ttl_exp tenure, fill(select(3))}
@@ -381,67 +535,59 @@
         . {stata violinplot wage ttl_exp tenure, pdf(ll(0))}
 
 {pstd}
-    {cmd:violinplot} does not feature and {cmd:over()} option or similar. Use
-    command {helpb separate} if you want to display results by subpopulations:
+    Use option {cmd:over()} to display results by subpopulations:
 
-        . {stata separate wage, by(union) veryshortlabel}
-        . {stata violinplot wage?}
-        . {stata drop wage?}
-
-{pstd}
-    Use parentheses to create subgraphs:
-
-        . {stata separate ttl_exp, by(race) veryshortlabel}
-        . {stata separate tenure, by(race) veryshortlabel}
-{p 8 12 2}
-        . {stata violinplot (ttl_exp?) (tenure?), bylabels(ttl_exp tenure) pdf(ll(0))}
-        {p_end}
-        . {stata drop ttl_exp? tenure?}
+        . {stata violinplot wage, pdf(ll(0)) over(union)}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union)}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) swap}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) swap nostack}
 
 {pstd}
-    Overlays (whiskers and boxes omitted by default):
+    Use option {cmd:by()} to create subgraphs by subpopulations:
 
-        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) overlay}
-{p 8 12 2}
-        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) overlay fill(color(%50)) noline}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) by(union)}
 
 {pstd}
-    Use parentheses to create multiple overlays:
+    Combination of {cmd:over()} and {cmd:by()}:
 
-        . {stata separate ttl_exp, by(race) veryshortlabel}
-        . {stata separate tenure, by(race) veryshortlabel}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(race) by(union)}
 {p 8 12 2}
-        . {stata violinplot (ttl_exp?) (tenure?), pdf(ll(0)) overlay bylabels(ttl_exp tenure)}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(race) by(union) swap}
         {p_end}
-        . {stata drop ttl_exp? tenure?}
 
 {pstd}
-    Options {cmd:color()} (all elements), {cmd:lcolor()} (PDF lines), {cmd:bcolor()}
-    (boxes), etc. can be used to obtain colors from {helpb colorpalette}:
+    Use parentheses to define groups of variables that will be placed in separate
+    subgraphs:
 
-        . {stata separate wage, by(industry) veryshortlabel}
-{p 8 12 2}
-        . {stata violinplot wage?*, color(sb muted) nobox nowhiskers median(msymbol(o))}
-        {p_end}
-{p 8 12 2}
-        . {stata violinplot wage?*, color(sb muted) bcolor(sb muted, opacity(50)) nowhiskers}
-        {p_end}
-{p 8 12 2}
-        . {stata violinplot wage?*, color(plasma) fill nobox nowhiskers nomedian}
-        {p_end}
-        . {stata drop wage?*}
+        . {stata violinplot (wage) (ttl_exp), over(race)}
 
-        . {stata separate wage, by(south)}
-        . {stata separate ttl_exp, by(south)}
-        . {stata separate tenure, by(south)}
-        . {stata local legend legend(on order(1 "Not south" 2 "South"))}
+{pstd}
+    Use option {cmd:overlay} to create overlays (whiskers and boxes will be omitted by default):
+
 {p 8 12 2}
-        . {stata local ylabel ylabel(1.5 "wage" 3.5 "ttl_exp" 5.5 "tenure", nogrid)}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) overlay swap}
         {p_end}
 {p 8 12 2}
-        . {stata violinplot wage? ttl_exp? tenure?, pdf(ll(0)) color(Set1, select(1 2)) `legend' `ylabel'}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) overlay swap noline fill(color(%30)) key(median)}
         {p_end}
-        . {stata drop wage? ttl_exp? tenure?}
+
+{pstd}
+    Use options {cmd:color()} (all elements), {cmd:lcolor()} (PDF lines), {cmd:bcolor()}
+    (boxes), etc., to obtain colors from {helpb colorpalette}:
+
+{p 8 12 2}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) swap nostack color(Set1)}
+        {p_end}
+
+{p 8 12 2}
+        . {stata violinplot wage, over(industry) color(sb muted) nobox nowhiskers median(msymbol(o))}
+        {p_end}
+{p 8 12 2}
+        . {stata violinplot wage, over(industry) color(sb muted) bcolor(sb muted, opacity(50)) nowhiskers}
+        {p_end}
+{p 8 12 2}
+        . {stata violinplot wage, over(industry) color(plasma) fill nobox nowhiskers nomedian}
+        {p_end}
 
 
 {title:References}
@@ -477,8 +623,8 @@
     Thanks for citing this software as follows:
 
 {pmore}
-    Jann, B. (2022). violinplot: Stata module to draw violin plots. Available from
-    {browse "https://github.com/benjann/violinplot/"}.
+    Jann, B. (2022). VIOLINPLOT: Stata module to draw violin plots. Available from
+    {browse "https://ideas.repec.org/c/boc/bocode/s459132.html"}.
 
 
 {title:Also see}

@@ -47,28 +47,36 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 3](/images/3.png)
 
-    separate ttl_exp, by(race) veryshortlabel
-    separate tenure, by(race) veryshortlabel
-    violinplot (ttl_exp?) (tenure?), pdf(ll(0)) fill bylabels(ttl_exp tenure) 
-    drop ttl_exp? tenure?
+    violinplot (ttl_exp) (tenure), pdf(ll(0)) fill over(race)
 
 ![example 4](/images/4.png)
 
-    separate wage, by(union) veryshortlabel
-    violinplot wage?, pdf(ll(0)) noline fill(fcolor(%50) lcolor(%100)) overlay 
-    drop wage?
+    violinplot wage, pdf(ll(0)) noline fill(fcolor(%50) lcolor(%100)) over(union) overlay
 
 ![example 5](/images/5.png)
 
-    separate wage, by(industry) veryshortlabel
-    violinplot wage?*, pdf(ll(0)) color(plasma) fill nomedian nobox nowhiskers
-    drop wage?
+    violinplot wage, pdf(ll(0)) over(industry) color(plasma) fill nomedian nobox nowhiskers
 
 ![example 6](/images/6.png)
 
 ---
 
 Main changes:
+
+    01nov2022 (version 1.0.5)
+    - option by() added
+    - options over(), olabels(), swap, gap(), atover, asover, nostack added
+    - change in suboptions of dscale()
+    - option nolabel added
+    - option addplot() added
+    - option cw added
+    - support for p#() options added
+    - now returning error if there are no valid observations
+    - density estimation now skipped if x is constant
+    - now using exact density estimation if range() restricts the evaluation
+      range to less than half the default evaluation range
+    - ticks and grid lines on categorical axis now deactivated (unless atover is
+      specified)
 
     25oct2022 (version 1.0.4)
     - weights were not taken into account; this is fixed
