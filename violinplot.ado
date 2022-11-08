@@ -1,4 +1,4 @@
-*! version 1.0.5  01nov2022  Ben Jann
+*! version 1.0.6  08nov2022  Ben Jann
 
 program violinplot
     version 15
@@ -17,6 +17,7 @@ program violinplot
         DScale(str) ///
         tight ///
         range(numlist max=2 missingok) ///
+        n(numlist int >=1 max=1) ///
         PDFopts(str) ///
         qdef(passthru) ///
         cw ///
@@ -25,6 +26,7 @@ program violinplot
         BYLABels(str asis) ///
         noLABel ///
         key(str) ///
+        order(str) ///
         NOLINE     LINE     LINE2(str)     LColor(str) ///
         NOFILL     FILL     FILL2(str)     FColor(str) ///
         NOWHISKers WHISKers WHISKers2(str) WColor(str) ///
@@ -64,6 +66,10 @@ program violinplot
                 di as err "total suboption in over() not allowed with atover"
                 exit 198
             }
+            if "`over_sort'"!="" {
+                di as err "sort suboption in over() not allowed with atover"
+                exit 198
+            }
         }
     }
     else {
@@ -99,43 +105,41 @@ program violinplot
             di as err "noline and nofill not both allowed"
             exit 198
         }
-        if `"`fillselect'"'!="" {
+        if `"`fill_select'"'!="" {
             di as err "noline and fill(select()) not both allowed"
             exit 198
         }
         local fill fill // set fill on if noline has been specified
     }
     // - whiskers option: default is whiskers unless overlay has been specified
-    if `"`whiskers2'"'!="" local whiskers whiskers
+    if "`nowhiskers'`overlay'"=="" local whiskers whiskers
+    if `"`whiskers2'"'!=""         local whiskers whiskers
     if "`whiskers'"!="" {
         if "`nowhiskers'"!="" {
             di as err "whiskers and nowhiskers not both allowed"
             exit 198
         }
     }
-    if "`nowhiskers'"=="" {
-        if "`overlay'"=="" local whiskers whiskers
-    }
     // - box option: default is box unless overlay has been specified
-    if `"`box2'"'!="" local box box
+    if "`nobox'`overlay'"=="" local box box
+    if `"`box2'"'!=""         local box box
     if "`box'"!="" {
         if "`nobox'"!="" {
             di as err "box and nobox not both allowed"
             exit 198
         }
-    }
-    if "`nobox'"=="" {
-        if "`overlay'"=="" local box box
+        _parse_box, `box2' // returns box_type, box2
     }
     // - median option: default is median
+    if "`nomedian'"==""  local median median
     if `"`median2'"'!="" local median median
     if "`median'"!="" {
         if "`nomedian'"!="" {
             di as err "median and nomedian not both allowed"
             exit 198
         }
+        _parse_med, `median2' // returns median_type, median2
     }
-    if "`nomedian'"=="" local median median
     // - mean option: default is nomean
     if `"`mean2'"'!="" local mean mean
     if "`mean'"!="" {
@@ -143,13 +147,33 @@ program violinplot
             di as err "mean and nomean not both allowed"
             exit 198
         }
+        _parse_mean, `mean2' // returns mean_type, mean2
     }
-    // - list of plot types / determine key
-    local plotlist `fill' `line' `whiskers' `box' `median' `mean'
+    // - list of summary statistics
+    if `"`mean_stat'"'==""   local stats mean
+    else                     local stats `"`mean_stat'"'
+    if `"`median_stat'"'=="" local stats `"`stats' median"'
+    else                     local stats `"`stats' `median_stat'"'
+    if `"`box_stat'"'==""    local stats `"`stats' p25 p75"'
+    else                     local stats `"`stats' `box_stat'"'
+    // - list (and order) of plot types / determine legend key
+    local plotlist `fill' `whiskers' `box'
+    if "`median_type'"=="line" local plotlist `plotlist' `median'
+    if "`mean_type'"=="line"   local plotlist `plotlist' `mean'
+    local plotlist `plotlist' `line'
+    if "`median_type'"!="line" local plotlist `plotlist' `median'
+    if "`mean_type'"!="line"   local plotlist `plotlist' `mean'
+    if `"`order'"'!="" {
+        _parse_order `"`order'"' "`plotlist'" // returns plotlist
+    }
     _parse_key, `key'
     if "`key'"!="" {
         if !`: list key in plotlist' {
             di as err "key(): `key' not available"
+            exit 198
+        }
+        if "`key'"=="fill" & "`fill_select'"!="" {
+            di as err "key(fill) not allowed with fill(select())"
             exit 198
         }
     }
@@ -158,10 +182,12 @@ program violinplot
         else            local key "fill"
     }
     // - further option
+    if "`n'"!="" local nopt n(`n')
     _parse_pdfopts, `pdfopts' // extracts -exact- option
     _parse_range `range' // returns lb ub
     _parse_dscale `dscale' // returns dscale and dstype
     local dscale = `dscale' * 0.5
+    local hasaddplot = `"`addplot'"'!=""
     
     // parse varlist
     gettoken varlist : anything, match(haspar)
@@ -191,6 +217,13 @@ program violinplot
             di as err "overlay not allowed if atover is specified with" /*
                 */ " single variable"
             exit 198
+        }
+    }
+    if "`over_sort'"!="" {
+        if "`over_sort2'"=="" local over_sort2 1
+        if `over_sort2'>`k_var_1' { // support for first variable group only
+            di as err "over(, sort()): variable #`over_sort2' not found"
+            exit 499
         }
     }
     
@@ -262,6 +295,24 @@ program violinplot
     local stack = "`stack'"=="" // 0 if nostack is specified
     if "`overlay'"!="" | `k_`CLUS''==1 local stack 0
     
+    // prepare pstyles
+    if "`pstyles'"=="" {
+        if "`overlay'"!=""    local pstyles `k_`PLOT''
+        else if `stack'       local pstyles 1
+        else if `k_`CLUS''==1 local pstyles 1
+        else                  local pstyles `k_`PLOT''
+        if `pstyles'!=1 {
+            numlist "1/`=min(`pstyles', 15)'"
+            local pstyles `r(numlist)'
+        }
+    }
+    forv p = 1/`k_`PLOT'' {    // collect p#[el]()
+        _parse_popts "" `p' , `options' // must type space before ","
+        foreach el of local plotlist {
+            _parse_popts `el' `p' , `options' // must type space before ","
+        }
+    }
+    
     // generate colors
     if `"`color'"'!="" {
         _parse comma lhs rhs : color
@@ -275,25 +326,18 @@ program violinplot
     }
     foreach opt in l f w b med mean  {
         if `"``opt'color'"'=="" {
-            if "`opt'"=="med" {
-                if "`box'"=="" | `"`median2'"'!="" {
-                    local `opt'color `"`color'"'
-                }
-            }
-            else {
-                local `opt'color `"`color'"'
-            }
+            if "`opt'"=="med" continue // will be handled later
+            local `opt'color `"`color'"'
+            continue
         }
-        else {
-            _parse comma lhs rhs : `opt'color
-            if `"`rhs'"'=="" local rhs ","
-            colorpalette `lhs' `rhs' nograph n(`k_`PLOT'')
-            if r(n)!=`k_`PLOT'' {
-                // wrong number of colors, e.g. because select() was applied
-                colorpalette `r(p)', nograph n(`k_`PLOT'') class(`r(pclass)')
-            }
-            local `opt'color `"`r(p)'"'
+        _parse comma lhs rhs : `opt'color
+        if `"`rhs'"'=="" local rhs ","
+        colorpalette `lhs' `rhs' nograph n(`k_`PLOT'')
+        if r(n)!=`k_`PLOT'' {
+            // wrong number of colors, e.g. because select() was applied
+            colorpalette `r(p)', nograph n(`k_`PLOT'') class(`r(pclass)')
         }
+        local `opt'color `"`r(p)'"'
     }
     
     // collect labels
@@ -366,18 +410,32 @@ program violinplot
     }
     
     // prepare tempvars
-    tempvar byid overid grpid varid pos avg med p25 p75 wlo wup dup dlo at
+    tempvar byid tag overid grpid varid pos avg med blo bup wlo wup dup dlo at
+    qui gen byte `tag'     = . // tag start of new result
     qui gen byte `byid'    = . // id of by subpop
     qui gen byte `overid'  = . // id of over subpop
     qui gen byte `grpid'   = . // id of variable group
     qui gen byte `varid'   = . // id of variable (within variable group)
-    foreach v in pos avg med p25 p75 wlo wup dup dlo at {
+    foreach v in pos avg med blo bup wlo wup dup dlo at {
         qui gen double ``v'' = .
     }
     
+    // fill in byid for existing observations so that addplot() will
+    // will work with by()
+    if `hasaddplot' & "`by'"!="" {
+        local j 0
+        foreach lev of local bylevels {
+            local ++j
+            if `bystr' local lev `"`"`lev'"'"'
+            qui replace `byid' = `j' if `by'==`lev'
+        }
+    }
+    
     // compute results
-    local preserve 0
-    local offset 0
+    local preserve preserve
+    if `hasaddplot' local offset0 = _N // (append results)
+    else            local offset0 0
+    local offset `offset0'
     local j 0
     local o 0
     local bylvls: copy local bylevels
@@ -394,22 +452,20 @@ program violinplot
                     local xvar: word `i' of `varlist_`g''
                     su `xvar' `iff', meanonly
                     if (r(N)==0) continue // no observation
-                    local x_is_cons = r(min)==r(max)
+                    local x_is_cons = r(max)==r(min)
                     // density estimate
                     if !`x_is_cons' {
                         Fit_PDF "`xvar'" `"`wgt'"' `"`iff'"' "`tight'" /*
                             */ "`lb'" "`ub'" "`r(min)'" "`r(max)'" /*
-                            */ "`exact'" `"`pdfopts'"'
+                            */ "`exact'" "`nopt'" `"`pdfopts'"'
                         local n = colsof(e(b))
                     }
                     else local n 1 // skip density estimate if x is constant
                     local a = `offset' + 1
-                    local b = `offset' + `n' + 1 // insert empty row (missings)
+                    local b = `offset' + `n' + 1 // insert empty row at end
                     if `b' > _N {
-                        if `preserve'==0 {
-                            preserve
-                            local preserve 1
-                        }
+                        `preserve'
+                        local preserve
                         qui set obs `b'
                     }
                     if !`x_is_cons' {
@@ -417,9 +473,10 @@ program violinplot
                         mata: st_store((`a',`b'-1), "`at'", st_matrix("e(at)")')
                     }
                     // stats
-                    Fit_stats "`xvar'" `"`wgt'"' `"`iff'"' `a' /*
-                        */ `avg' `med' `p25' `p75' `wlo' `wup' `"`qdef'"'
+                    Fit_stats `"`stats'"' "`xvar'" `"`wgt'"' `"`iff'"' `a' /*
+                        */ `avg' `med' `blo' `bup' `wlo' `wup' `"`qdef'"'
                     // ids
+                    qui replace `tag'     = 1   in `a'
                     qui replace `varid'   = `i' in `a'/`b'
                     qui replace `grpid'   = `g' in `a'/`b'
                     qui replace `overid'  = `o' in `a'/`b'
@@ -431,27 +488,24 @@ program violinplot
     }
     
     // check whether there have been any valid observations at all
-    if `offset'==0 error 2000
+    if `offset'==`offset0' error 2000
     
-    // remove extra observations (unless addplot() has been specified); this
-    // is just to gain a bit of speed in very large datasets
-    if `"`addplot'"'=="" {
-        if `offset' < _N {
-            if `preserve'==0 {
-                preserve
-                local preserve 1
-            }
-            qui keep in 1/`offset'
-        }
+    // sort results
+    if "`over_sort'"!="" {
+        tempname sorttag
+        qui gen byte `sorttag' = `tag'<. & `varid'==`over_sort2'/*
+            */ & `grpid'==1 & `byid'==1 in `=`offset0'+1'/`offset'
+        mata: _over_sort((`offset0'+1, `offset'))
     }
     
     // determine plot positions on categorical axis
+    local in "in `=`offset0'+1'/`offset'"
     if "`atover'"!="" {
         if `k_`CLUS''==1 {
             local i 0
             foreach ii of local overlevels {
                 local ++i
-                qui replace `pos' = `ii' if ``PLOT'id'==`i'
+                qui replace `pos' = `ii' if ``PLOT'id'==`i' `in'
             }
             local plotpos `"`overlevels'"'
         }
@@ -459,19 +513,19 @@ program violinplot
             local i 0
             foreach ii of local overlevels {
                 local ++i
-                qui replace `pos' = `ii' if ``CLUS'id'==`i'
+                qui replace `pos' = `ii' if ``CLUS'id'==`i' `in'
             }
             local cluspos `"`overlevels'"'
         }
     }
     else if "`overlay'"!="" {
-        qui replace `pos' = ``CLUS'id'
+        qui replace `pos' = ``CLUS'id' `in'
         numlist "1/`k_`CLUS''"
         local cluspos `r(numlist)'
     }
     else {
         if `k_`CLUS''==1 {
-            qui replace `pos' = ``PLOT'id'
+            qui replace `pos' = ``PLOT'id' `in'
             numlist "1/`k_`PLOT''"
             local plotpos `r(numlist)'
         }
@@ -485,7 +539,8 @@ program violinplot
                 local ii0 = `ii' + 1
                 forv i = 1/`ktmp' {
                     local ii = `ii' + 1
-                    qui replace `pos' = `ii' if ``CLUS'id'==`c' & ``PLOT'id'==`i'
+                    qui replace `pos' = `ii' if ``CLUS'id'==`c' &/*
+                        */ ``PLOT'id'==`i' `in'
                     local plotpos `plotpos' `ii'
                 }
                 local cluspos `cluspos' `= (`ii0' + `ii') / 2'
@@ -495,12 +550,14 @@ program violinplot
     }
     
     // shift and rescale of PDFs
+    local in "in `=`offset0'+1'/`offset'"
     if "`dstype'"=="individual" {
         forv j = 1/`k_`By'' {
             forv c = 1/`k_`CLUS'' {
                 forv i = 1/`k_`PLOT'' {
                     _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
-                        */ ``CLUS'id'==`c' & ``PLOT'id'==`i', dscale(`dscale')
+                        */ ``CLUS'id'==`c' & ``PLOT'id'==`i' `in'/*
+                        */, dscale(`dscale')
                 }
             }
         }
@@ -509,7 +566,7 @@ program violinplot
         forv j = 1/`k_`By'' {
             forv i = 1/`k_`PLOT'' {
                 _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
-                    */ ``PLOT'id'==`i', dscale(`dscale')
+                    */ ``PLOT'id'==`i' `in', dscale(`dscale')
             }
         }
     }
@@ -517,115 +574,145 @@ program violinplot
         forv j = 1/`k_`By'' {
             forv c = 1/`k_`CLUS'' {
                 _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
-                    */ ``CLUS'id'==`c', dscale(`dscale')
+                    */ ``CLUS'id'==`c' `in', dscale(`dscale')
             }
         }
     }
     else if "`dstype'"=="subgraph" {
         forv j = 1/`k_`By'' {
-            _dscale `dup' `dlo' `pos' if ``By'id'==`j', dscale(`dscale')
+            _dscale `dup' `dlo' `pos' if ``By'id'==`j' `in', dscale(`dscale')
         }
     }
     else {
-        _dscale `dup' `dlo' `pos', dscale(`dscale')
+        _dscale `dup' `dlo' `pos' `in', dscale(`dscale')
     }
     
-    // prepare pstyles
-    if "`pstyles'"=="" {
-        if "`overlay'"!=""    local pstyles `k_`PLOT''
-        else if `stack'       local pstyles 1
-        else if `k_`CLUS''==1 local pstyles 1
-        else                  local pstyles `k_`PLOT''
-        if `pstyles'!=1 {
-            numlist "1/`=min(`pstyles', 15)'"
-            local pstyles `r(numlist)'
+    // compute points on density curve used by some plot types
+    local pdftmp
+    if      "`box_type'"=="fill"  local pdftmp box_dlo box_dup box_at
+    else if "`box_type'"=="lines" local pdftmp box_dlo box_dup box_at
+    if "`median_type'"=="line"    local pdftmp `pdftmp' med_dlo med_dup
+    if "`mean_type'"=="line"      local pdftmp `pdftmp' avg_dlo avg_dup
+    if "`pdftmp'"!="" {
+        tempvar `pdftmp'
+        mata: _ipolate_PDF(`offset0'+1, `offset')
+    }
+    
+    // modify data for plotting
+    if !`hasaddplot' {
+        // remove extra observations unless addplot() has been specified; this
+        // is just to gain a bit of speed in very large datasets
+        if `offset' < _N {
+            `preserve'
+            local preserve
+            qui keep in 1/`offset'
         }
     }
-    foreach p of local pstyles {    // collect p#()
-        _parse_popts `p' , `options' // must type space before ","
+    else if "`by'"!="" {
+        // copy data if -total- has been specified, so that addplot() will have
+        // access to the data in the -total- subgraph
+        if "`by_total'"!="" {
+            `preserve'
+            local preserve
+            tempvar dupl
+            qui expand 2 if `touse'==1, generate(`dupl')
+            fre `dupl'
+            qui replace `byid' = `k_by' if `dupl'==1
+        }
+    }
+    else if "`BY'"!="" { // BY is equal to grp in this case
+        // make k_grp copies of data, so that addplot() will have access to all
+        // data in each subgraph
+        `preserve'
+        local preserve
+        tempname sortindex
+        qui gen double `sortindex' = _n
+        qui expand `k_`BY'' if `touse'==1
+        sort `sortindex'
+        qui by `sortindex': replace ``BY'id' = _n if `touse'==1
+        drop `sortindex'
     }
     
-    // settings related to orientation; also handles addition of second axis in
-    // case of stacked labels
+    // settings related to orientation and choice of axes
     if "`vertical'"!="" local rvert horizontal
     else                local rhor  horizontal
     if `stack' {
-       if "`vertical'"!="" local rvert `rvert' xaxis(1 2)
-       else                local rvert `rvert' yaxis(1 2)
+       if "`vertical'"!="" local axes xaxis(1 2)
+       else                local axes yaxis(1 2)
     }
-    
-    // plot counter (for legend)
-    local keys 0
-    local ikey 0
     
     // fill plots
-    local finten fintensity(50)
-    if `"`fill2'"'=="" local finten fintensity(50)
-    else               local finten
     local pfill
-    if "`fillselect'"!="" {
-        local ii 0
-        forv j = 1/`k_`By'' { // subgraph
-            if "`CLUS'"=="var" {
-                if "`BY'"=="grp" local ktmp `k_var_`j''
-                else             local ktmp `k_var'
-            }
-            else                 local ktmp `k_`CLUS''
-            forv c = 1/`ktmp' { // cluster
-                if "`PLOT'"=="var" {
-                    if        "`BY'"=="grp" local ktmp2 `k_var_`j''
-                    else if "`CLUS'"=="grp" local ktmp2 `k_var_`c''
-                    else                    local ktmp2 `k_var'
+    if "`fill'"!="" {
+        if `"`fill2'"'=="" local finten fintensity(50)
+        else               local finten
+        if "`fill_select'"!="" {
+            local fkeys 0
+            local ii 0
+            forv j = 1/`k_`By'' { // subgraph
+                if "`CLUS'"=="var" {
+                    if "`BY'"=="grp" local ktmp `k_var_`j''
+                    else             local ktmp `k_var'
                 }
-                else                        local ktmp2 `k_`PLOT''
-                local psty `pstyles'
-                forv i = 1/`ktmp2' { // plot
-                    local ++ii
-                    if "`psty'"=="" local psty `pstyles'
-                    gettoken p psty : psty
-                    if !`:list ii in fillselect' continue
-                    local ++keys
-                    getcolr `i' `fcolor'
-                    local pfill `pfill' /*
-                        */ (rarea `dlo' `dup' `at' if ``By'id'==`j' /*
-                        */ & ``CLUS'id'==`c' & ``PLOT'id'==`i', /*
-                        */ `rvert' pstyle(p`p') `popts_`p'' /*
-                        */ lc(%0) `finten' `colr' `fill2')
+                else                 local ktmp `k_`CLUS''
+                forv c = 1/`ktmp' { // cluster
+                    if "`PLOT'"=="var" {
+                        if        "`BY'"=="grp" local ktmp2 `k_var_`j''
+                        else if "`CLUS'"=="grp" local ktmp2 `k_var_`c''
+                        else                    local ktmp2 `k_var'
+                    }
+                    else                        local ktmp2 `k_`PLOT''
+                    local psty `pstyles'
+                    forv i = 1/`ktmp2' { // plot
+                        local ++ii
+                        if "`psty'"=="" local psty `pstyles'
+                        gettoken p psty : psty
+                        if !`:list ii in fill_select' continue
+                        local ++fkeys
+                        getcolr `i' `fcolor'
+                        local popts `axes' `rvert' pstyle(p`p') `p_`i''/*
+                            */ lc(%0) `finten' `colr' `fill2' `p_`i'f'
+                        local pfill `pfill'/*
+                            */ (rarea `dlo' `dup' `at' if ``By'id'==`j'/*
+                            */ & ``CLUS'id'==`c' & ``PLOT'id'==`i', `popts')
+                    }
                 }
             }
         }
-    }
-    else if "`fill'"!="" {
-        local psty `pstyles'
-        forv i = 1/`k_`PLOT'' {
-            if "`psty'"=="" local psty `pstyles'
-            gettoken p psty : psty
-            getcolr `i' `fcolor'
-            local pfill `pfill' /*
-                */ (rarea `dlo' `dup' `at' if ``PLOT'id'==`i', cmissing(n) /*
-                */ `rvert' pstyle(p`p') `popts_`p'' lc(%0) `finten' `colr' `fill2')
+        else {
+            local fkeys `k_`PLOT''
+            local psty `pstyles'
+            forv i = 1/`fkeys' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                getcolr `i' `fcolor'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' lc(%0) `finten'/*
+                    */ `colr' `fill2' `p_`i'f'
+                local pfill `pfill'/*
+                    */ (rarea `dlo' `dup' `at' if ``PLOT'id'==`i',/*
+                    */ cmissing(n) `popts')
+            }
         }
-        local keys = `keys' + `k_`PLOT''
     }
     
     // line plots
-    if "`key'"=="line" local ikey `keys'
     local pline
     if "`line'"!="" {
+        local lkeys `k_`PLOT''
         local psty `pstyles'
-        forv i = 1/`k_`PLOT'' {
+        forv i = 1/`lkeys' {
             if "`psty'"=="" local psty `pstyles'
             gettoken p psty : psty
             getcolr `i' `lcolor'
-            local pline `pline' /*
-                */ (rline `dlo' `dup' `at' if ``PLOT'id'==`i', cmissing(n) /*
-                */ `rvert' pstyle(p`p') `popts_`p'' `colr' `line2')
+            local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr' `line2'/*
+                */ `p_`i'l'
+            local pline `pline'/*
+                */ (rline `dlo' `dup' `at' if ``PLOT'id'==`i',/*
+                */ cmissing(n) `popts')
         }
-        local keys = `keys' + `k_`PLOT''
     }
     
     // whisker plots
-    if "`key'"=="whiskers" local ikey `keys'
     local pwhisk
     if "`whiskers'"!="" {
         local psty `pstyles'
@@ -633,78 +720,176 @@ program violinplot
             if "`psty'"=="" local psty `pstyles'
             gettoken p psty : psty
             getcolr `i' `wcolor'
-            local pwhisk `pwhisk' /*
-                */ (rspike `wlo' `p25' `pos' if ``PLOT'id'==`i', `rhor' /*
-                */ pstyle(p`p') `popts_`p'' `colr' `whiskers2') /*
-                */ (rspike `p75' `wup' `pos' if ``PLOT'id'==`i', `rhor' /*
-                */ pstyle(p`p') `popts_`p'' `colr' `whiskers2')
+            local popts `axes' `rhor' pstyle(p`p') `p_`i'' `colr' `whiskers2'/*
+                */ `p_`i'w'
+            local pwhisk `pwhisk'/*
+                */ (rspike `wlo' `blo' `pos' if ``PLOT'id'==`i', `popts') /*
+                */ (rspike `bup' `wup' `pos' if ``PLOT'id'==`i', `popts')
         }
-        local keys = `keys' + 2*`k_`PLOT''
+        local wkeys = 2*`k_`PLOT''
     }
     
     // box plots
-    if "`key'"=="box" local ikey `keys'
     local pbox
     if "`box'"!="" {
-        if `"`box2'"'=="" local boxwd lw(vthick)
-        else              local boxwd
+        local bkeys `k_`PLOT''
         local psty `pstyles'
-        forv i = 1/`k_`PLOT'' {
-            if "`psty'"=="" local psty `pstyles'
-            gettoken p psty : psty
-            getcolr `i' `bcolor'
-            local pbox `pbox' /*
-                */ (rspike `p25' `p75' `pos' if ``PLOT'id'==`i', `rhor' /*
-                */ pstyle(p`p') `popts_`p'' `boxwd' `colr' `box2')
+        if "`box_type'"=="fill" {
+            if `"`box2'"'=="" local finten fintensity(50)
+            else              local finten
+            forv i = 1/`bkeys' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                getcolr `i' `bcolor'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' lc(%0)/*
+                    */ `finten' `colr' `box2' `p_`i'b'
+                local pbox `pbox'/*
+                    */ (rarea `box_dlo' `box_dup' `box_at' if ``PLOT'id'==`i',/*
+                    */ cmissing(n) `popts')
+            }
         }
-        local keys = `keys' + `k_`PLOT''
+        else if "`box_type'"=="lines" {
+            forv i = 1/`bkeys' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                getcolr `i' `bcolor'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr' `box2'/*
+                    */ `p_`i'b'
+                local pbox `pbox'/*
+                    */ (rspike `box_dlo' `box_dup' `box_at' if ``PLOT'id'==`i',/*
+                    */ `popts')
+            }
+        }
+        else {
+            if `"`box2'"'=="" local boxwd lw(vthick)
+            else              local boxwd
+            forv i = 1/`bkeys' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                getcolr `i' `bcolor'
+                local popts `axes' `rhor' pstyle(p`p') `p_`i'' `boxwd' `colr'/*
+                    */ `box2' `p_`i'b'
+                local pbox `pbox'/*
+                    */ (rspike `blo' `bup' `pos' if ``PLOT'id'==`i', `popts')
+            }
+        }
     }
     
     // median plots
-    if "`key'"=="median" local ikey `keys'
     local pmed
     if "`median'"!="" {
-        if "`vertical'"!=""  local vlist `med' `pos'
-        else                 local vlist `pos' `med'
-        if "`box'"!=""       local msym msymbol(O) msize(vsmall)
-        else                 local msym
-        if `"`median2'"'!="" local msym
+        local mkeys `k_`PLOT''
         local psty `pstyles'
-        forv i = 1/`k_`PLOT'' {
-            if "`psty'"=="" local psty `pstyles'
-            gettoken p psty : psty
-            getcolr `i' `medcolor'
-            if `"`colr'"'=="" {
-                if "`box'"!="" & `"`median2'"'=="" local colr mcolor(white)
+        if "`median_type'"=="line" {
+            if `"`medcolor'"'=="" local medcolor `"`color'"'
+            forv i = 1/`mkeys' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                getcolr `i' `medcolor'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr'/*
+                    */ `median2' `p_`i'med'
+                local pmed `pmed'/*
+                    */ (rspike `med_dlo' `med_dup' `med' if ``PLOT'id'==`i',/*
+                    */ `popts')
             }
-            local pbox `pbox' /*
-                */ (scatter `vlist' if ``PLOT'id'==`i', pstyle(p`p') /*
-                */ `popts_`p'' `msym' `colr' `median2')
         }
-        local keys = `keys' + `k_`PLOT''
+        else {
+            if "`vertical'"!=""  local vlist `med' `pos'
+            else                 local vlist `pos' `med'
+            if `"`median2'"'!="" | "`box_type'"!="bar" {
+                local msym
+                if `"`medcolor'"'=="" local medcolor `"`color'"'
+            }
+            else {
+                local msym msymbol(O) msize(vsmall)
+                if `"`medcolor'"'=="" {
+                    mata: st_local("medcolor", invtokens(J(1,`mkeys',"white")))
+                }
+            }
+            forv i = 1/`mkeys' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                getcolr `i' `medcolor'
+                local popts `axes' pstyle(p`p') `p_`i'' `msym' `colr'/*
+                    */ `median2' `p_`i'med'
+                local pmed `pmed'/*
+                    */ (scatter `vlist' if ``PLOT'id'==`i', `popts')
+            }
+        }
     }
     
     // mean plots
-    if "`key'"=="mean" local ikey `keys'
     local pmean
     if "`mean'"!="" {
-        local msopts msymbol(pipe) msize(huge)
-        if "`vertical'"!="" {
-            local vlist `avg' `pos'
-            local msopts `msopts' msangle(90)
-        }
-        else local vlist `pos' `avg'
-        if `"`mean2'"'!="" local msopts
+        local akeys `k_`PLOT''
         local psty `pstyles'
-        forv i = 1/`k_`PLOT'' {
-            if "`psty'"=="" local psty `pstyles'
-            gettoken p psty : psty
-            getcolr `i' `meancolor'
-            local pmean `pmean' /*
-                */ (scatter `vlist' if ``PLOT'id'==`i', pstyle(p`p') /*
-                */ `popts_`p'' `msopts' `colr' `mean2')
+        if "`mean_type'"=="line" {
+            forv i = 1/`akeys' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                getcolr `i' `meancolor'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr'/*
+                    */ `mean2' `p_`i'mean'
+                local pmean `pmean'/*
+                    */ (rspike `avg_dlo' `avg_dup' `avg' if ``PLOT'id'==`i',/*
+                    */ `popts')
+            }
         }
-        local keys = `keys' + `k_`PLOT''
+        else {
+            local msopts msymbol(pipe) msize(huge)
+            if "`vertical'"!="" {
+                local vlist `avg' `pos'
+                local msopts `msopts' msangle(90)
+            }
+            else local vlist `pos' `avg'
+            if `"`mean2'"'!="" local msopts
+            forv i = 1/`akeys' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                getcolr `i' `meancolor'
+                local popts `axes' pstyle(p`p') `p_`i'' `msopts' `colr'/*
+                    */ `mean2' `p_`i'mean'
+                local pmean `pmean'/*
+                    */ (scatter `vlist' if ``PLOT'id'==`i', `popts')
+            }
+        }
+    }
+    
+    // put together plot command in right order and determine legend keys
+    local plots
+    local nkeys 0
+    local ikey 0
+    foreach el of local plotlist {
+        if "`el'"=="fill" {
+            local plots `plots' `pfill'
+            if "`key'"=="`el'" local ikey  `nkeys'
+            else               local nkeys = `nkeys' + `fkeys'
+        }
+        else if "`el'"=="line" {
+            local plots `plots' `pline'
+            if "`key'"=="`el'" local ikey `nkeys'
+            else               local nkeys = `nkeys' + `lkeys'
+        }
+        else if "`el'"=="whiskers" {
+            local plots `plots' `pwhisk'
+            if "`key'"=="`el'" local ikey `nkeys'
+            else               local nkeys = `nkeys' + `wkeys'
+        }
+        else if "`el'"=="box" {
+            local plots `plots' `pbox'
+            if "`key'"=="`el'" local ikey `nkeys'
+            else               local nkeys = `nkeys' + `bkeys'
+        }
+        else if "`el'"=="median" {
+            local plots `plots' `pmed'
+            if "`key'"=="`el'" local ikey `nkeys'
+            else               local nkeys = `nkeys' + `mkeys'
+        }
+        else if "`el'"=="mean" {
+            local plots `plots' `pmean'
+            if "`key'"=="`el'" local ikey `nkeys'
+            else               local nkeys = `nkeys' + `akeys'
+        }
     }
     
     // compile tick labels
@@ -731,14 +916,15 @@ program violinplot
         }
         local tstyle notick labgap(tiny) nogrid
         if "`vertical'"!="" {
-            local ylabels xlabels(`ylabels', `tstyle') /*
-                */ xlabels(`ylabels2', axis(2) `tstyle') xscale(axis(2) alt noline)
+            local ylabels xlabels(`ylabels', `tstyle')/*
+                */ xlabels(`ylabels2', axis(2) labsize(medium)/*
+                */ `tstyle') xscale(axis(2) alt noline)
             local noitick noixtick
         }
         else {
-            local ylabels ylabels(`ylabels', `tstyle' angle(0)) /*
-                */ yscale(reverse) ylabels(`ylabels2', axis(2) `tstyle' angle(0))/*
-                */ yscale(axis(2) alt noline)
+            local ylabels ylabels(`ylabels', `tstyle' angle(0))/*
+                */ yscale(reverse) ylabels(`ylabels2', axis(2) labsize(medium)/*
+                */ `tstyle' angle(0)) yscale(axis(2) alt noline)
             local noitick noiytick
         }
     }
@@ -783,8 +969,9 @@ program violinplot
             gettoken lab `PLOT'lbls : `PLOT'lbls
             local ++ikey
             local legend `legend' `ikey' `"`lab'"'
+            if "`key'"=="whiskers" local ++ikey
         }
-        local legend legend(order(`legend'))
+        local legend legend(order(`legend') all)
         local bylegend
     }
     else {
@@ -800,14 +987,21 @@ program violinplot
             lab def ``BY'id' `j' `"`lab'"', add
         }
         lab val ``BY'id' ``BY'id'
-        local byopt by(``BY'id', note("") `noitick' `bylegend' `by_options' `byopts')
+        local byopt by(``BY'id', note("") `noitick' `bylegend' `by_options'/*
+            */ `byopts')
     }
     
     // axis titles
     if `:list sizeof varlist'==1 local xti `"`varlbls'"'
     else                         local xti `""""'
-    if "`vertical'"!="" local xti ytitle(`xti') xtitle("")
-    else                local xti xtitle(`xti') ytitle("")
+    if "`vertical'"!="" {
+        if `stack' local xti ytitle(`xti') xtitle("") xtitle("", axis(2))
+        else       local xti ytitle(`xti') xtitle("")
+    }
+    else {
+        if `stack' local xti xtitle(`xti') ytitle("") ytitle("", axis(2))
+        else       local xti xtitle(`xti') ytitle("")
+    }
     if "`atover'"!="" {
         if "`label'"=="" local yti: var lab `over'
         if `"`yti'"'=="" local yti "`over'"
@@ -820,21 +1014,27 @@ program violinplot
     if `"`addplot'"'!="" {
         local addplot `"|| `addplot' ||"'
     }
-    twoway `pfill' `pline' `pwhisk' `pbox' `pmed' `pmean' `addplot' /*
-        */ , `xti' `yti' `legend' `ylabels' `byopt' `options'
+    twoway `plots' `addplot', `xti' `yti' `legend' `ylabels' `byopt' `options'
 end
 
 program _parse_overby
     gettoken type 0 : 0
-    if "`type'"=="by" local opts *
+    if   "`type'"=="by" local opts *
+    else                local opts SORT SORT2(numlist int >0 max=1) DEScending/*
+                                    */ TLast
     capt n syntax varname [, ///
         MISSing MISSing2(passthru) TOTal TOTal2(passthru) `opts' ]
     if _rc {
         di as err "error in option `type'()"
         exit _rc
     }
-    c_local `type'         `varlist'
-    c_local `type'_options `options'
+    if "`sort2'"!=""      local sort sort
+    if "`descending'"!="" local sort sort
+    c_local `type'            `varlist'
+    c_local `type'_sort       `sort'
+    c_local `type'_sort2      `sort2'
+    c_local `type'_descending `descending'
+    c_local `type'_options    `options'
     if `"`missing2'"'!="" {
         local 0 `", `missing2'"'
         syntax [, missing2(str) ]
@@ -845,26 +1045,144 @@ program _parse_overby
         syntax [, total2(str) ]
         local total total
     }
+    if "`tlast'"!="" local total total
     c_local `type'_missing  `missing'
     c_local `type'_missing2 `"`missing2'"'
     c_local `type'_total    `total'
     c_local `type'_total2   `"`total2'"'
+    c_local `type'_tlast    `tlast'
 end
 
 program _parse_fill
     syntax [, Select(numlist int >0) *]
-    c_local fillselect `select'
+    c_local fill_select `select'
     c_local fill2 `options'
 end
 
+program _parse_box
+    syntax [, stat(str) type(str) * ]
+    capt n _parse_box_type, `type'
+    if _rc {
+        di as err "error in option box(type())"
+        exit _rc
+    }
+    if `"`stat'"'!="" {
+        _parse_count_stats `stat'
+        if `nstats'>2 {
+            di as err "box(stat()): too many statistics specified"
+            exit 198
+        }
+        else if `nstats'<2 {
+            di as err "box(stat()): two statistics required"
+            exit 198
+        }
+    }
+    c_local box_stat `"`stat'"'
+    c_local box_type `type'
+    c_local box2 `options'
+end
+
+program _parse_box_type
+    syntax [, Bar Fill Lines ]
+    local type `bar' `fill' `lines'
+    if "`type'"=="" local type bar
+    if `:list sizeof type'>1 {
+        di as err "too many types specified"
+        exit 198
+    }
+    c_local type `type'
+end
+
+program _parse_med
+    syntax [, stat(str) type(str) * ]
+    capt n _parse_med_type, `type'
+    if _rc {
+        di as err "error in option median(type())"
+        exit _rc
+    }
+    _parse_count_stats `stat'
+    if `nstats'>1 {
+        di as err "median(stat()): only one statistic allowed"
+        exit 198
+    }
+    c_local median_stat `"`stat'"'
+    c_local median_type `type'
+    c_local median2     `options'
+end
+
+program _parse_mean
+    syntax [, stat(str) type(str) * ]
+    capt n _parse_med_type, `type'
+    if _rc {
+        di as err "error in option mean(type())"
+        exit _rc
+    }
+    _parse_count_stats `stat'
+    if `nstats'>1 {
+        di as err "mean(stat()): only one statistic allowed"
+        exit 198
+    }
+    c_local mean_stat `"`stat'"'
+    c_local mean_type `type'
+    c_local mean2     `options'
+end
+
+program _parse_med_type
+    syntax [, Marker Line ]
+    local type `marker' `line'
+    if "`type'"=="" local type marker
+    if `:list sizeof type'>1 {
+        di as err "too many types specified"
+        exit 198
+    }
+    c_local type `type'
+end
+
+program _parse_count_stats
+    local j 0
+    while (`"`0'"'!="") {
+        gettoken s 0 : 0, bind
+        local ++j
+    }
+    c_local nstats `j'
+end
+
+program _parse_order
+    args order plotlist
+    capt n _parse_elist, `order' // return error if invalid order()
+    if _rc {
+        di as err "error in option order()"
+        exit _rc
+    }
+    local newlist
+    foreach el of local order {
+        _parse_elist, `el'
+        if !`: list elist in plotlist' {
+            di as err "order(): `elist' not available"
+            exit 198
+        }
+        local newlist `newlist' `elist'
+        local plotlist: list plotlist - elist
+    }
+    c_local plotlist `newlist' `plotlist'
+end
+
+program _parse_elist
+    syntax [, Line Fill Whiskers Box MEDian mean ]
+    c_local elist `line' `fill' `whiskers' `box' `median' `mean'
+end
+
 program _parse_key
-    syntax [, line fill WHISKers box MEDian mean ]
-    local key `line' `fill' `whiskers' `box' `median' `mean'
-    if `:list sizeof key'>1 {
+    capt n _parse_elist `0'
+    if _rc {
+        di as err "error in option key()"
+        exit _rc
+    }
+    if `:list sizeof elist'>1 {
         di as err "key(): too many elements specified"
         exit 198
     }
-    c_local key `key'
+    c_local key `elist'
 end
 
 program _parse_pdfopts
@@ -933,16 +1251,28 @@ program _parse_vlist
     c_local varlist `varlist'
 end
 
+program _parse_popts
+    gettoken el 0 : 0
+    if "`el'"!="" {
+        if      "`el'"=="median"   local el "med"
+        else if "`el'"!="mean"     local el = substr("`el'",1,1)
+    }
+    gettoken p 0 : 0
+    syntax [, p`p'`el'(str) * ]
+    c_local p_`p'`el' `p`p'`el''
+    c_local options   `options'
+end
+
 program getcolr
     gettoken i colors : 0
     local color: word `i' of `colors'
-    if `"`color'"'!=""  local color color(`"`color'"')
+    if `"`color'"'!="" local color color(`"`color'"')
     c_local colr `"`color'"'
 end
 
 program _makeiff
     args touse j j0 by bystr bylev o o0 over ostr olev
-    local iff "if `touse'"
+    local iff "if `touse'==1"
     if "`by'"!="" {
         if `j'<=`j0' { // (i.e. if not total)
             if `bystr' local iff `"`iff' & `by'==`"`bylev'"'"'
@@ -959,42 +1289,55 @@ program _makeiff
 end
 
 program Fit_PDF
-    args xvar wgt iff tight lb ub min max exact pdfopts
+    tempname ll ul wd0 wd
+    args xvar wgt iff tight lb ub min max exact n pdfopts
     if "`tight'"!="" {
-        local ll `min'
-        local ul `max'
+        scalar `ll' = `min'
+        scalar `ul' = `max'
     }
     else {
-        qui dstat pdf `xvar' `iff' `wgt', nose `exact' `pdfopts'
-        local ll = el(e(at),1,1)
-        local ul = el(e(at),1,colsof(e(b)))
+        qui dstat pdf `xvar' `iff' `wgt', nose `exact' `n' `pdfopts'
+        local n = colsof(e(b))
+        scalar `ll' = el(e(at),1,1)
+        scalar `ul' = el(e(at),1,`n')
     }
-    local wd0 = `ul' - `ll'
+    scalar `wd0' = `ul' - `ll'
     if "`lb'"!="" {
-        if `lb'>`ll' local ll `lb'
+        if `lb'>`ll' scalar `ll' = `lb'
     }
     if "`ub'"!="" {
-        if `ub'<`ul' local ul `ub'
+        if `ub'<`ul' scalar `ul' = `ub'
     }
-    local wd = `ul' - `ll'
-    if "`tight'"!="" | `wd'!=`wd0' {
-        if `wd'/`wd0' < 0.5 local exact exact
-        qui dstat pdf `xvar' `iff' `wgt', nose range(`ll' `ul') /*
-            */ `exact' `pdfopts'
+    scalar `wd' = `ul' - `ll'
+    if `wd'/`wd0' < 0.5 local exact exact
+    if "`tight'"!="" {
+        qui dstat pdf `xvar' `iff' `wgt', nose range(`=`ll'' `=`ul'') /*
+            */ `exact' `n' `pdfopts'
+    }
+    else if `wd'!=`wd0' {
+        // use matrix to avoid precision issues
+        tempname at
+        mata: st_matrix("`at'", /*
+            */ rangen(st_numscalar("`ll'"), st_numscalar("`ul'"),`n')')
+        qui dstat pdf `xvar' `iff' `wgt', nose at(`at') `exact' `pdfopts'
     }
 end
 
 program Fit_stats
-    args xvar wgt iff i avg med p25 p75 wlo wup qdef
-    qui dstat (mean med p25 p75) `xvar' `iff' `wgt', nose `qdef'
+    args stats xvar wgt iff i avg med blo bup wlo wup qdef
+    qui dstat (`stats') `xvar' `iff' `wgt', nose `qdef'
     tempname S
     mat `S' = e(b)
+    if colsof(`S')!=4 {
+        di as err "unexpected error; wrong number of summary statistics computed"
+        exit 499
+    }
     mat `S' = `S', `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
                 */ `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])
     qui replace `avg' = `S'[1,1] in `i'
     qui replace `med' = `S'[1,2] in `i'
-    qui replace `p25' = `S'[1,3] in `i'
-    qui replace `p75' = `S'[1,4] in `i'
+    qui replace `blo' = `S'[1,3] in `i'
+    qui replace `bup' = `S'[1,4] in `i'
     local ifrng inrange(`xvar', `S'[1,5], `S'[1,6])
     if `"`iff'"'!="" local ifrng `"`iff' & `ifrng'"'
     else             local ifrng `"if `ifrng'"'
@@ -1003,19 +1346,134 @@ program Fit_stats
     qui replace `wup' = r(max) in `i'
 end
 
-program _parse_popts
-    gettoken p 0 : 0
-    syntax [, p`p'(str) * ]
-    c_local popts_`p' `p`p''
-    c_local options   `options'
-end
-
 program _dscale
-    syntax varlist [if], dscale(str)
+    syntax varlist [if] [in], dscale(str)
     gettoken dup dlo : varlist
     gettoken dlo pos : dlo
     gettoken pos     : pos
     su `dup' `if', meanonly
-    qui replace `dup' = `dup'*`dscale'/r(max) + `pos' `if'
-    qui replace `dlo' = 2*`pos' - `dup' `if'
+    qui replace `dup' = `dup'*`dscale'/r(max) + `pos' `if' `in'
+    qui replace `dlo' = 2*`pos' - `dup' `if' `in'
 end
+
+version 15
+mata:
+mata set matastrict on
+
+void _over_sort(real rowvector ab)
+{
+    real scalar      dir, r
+    real colvector   med, p, id
+    string colvector lbls
+    
+    // establish sort order
+    dir = st_local("over_descending")=="" ? 1 : -1
+    med = st_data(ab, st_local("med"), st_local("sorttag"))
+    if (st_local("over_tlast")!="") {
+        r = rows(med)
+        p = order(med[|1\r-1|], dir) \ r
+    }
+    else p = order(med, dir)
+    // recode data
+    id    = J(rows(p), 1, .)
+    id[p] = st_data(ab, st_local("overid"), st_local("sorttag"))
+    st_store(ab, st_local("overid"), id[st_data(ab, (st_local("overid")))])
+    // reorder labels
+    lbls = tokens(st_local("overlbls"))'[p]
+    lbls = "`" :+ `"""' :+ lbls :+ `"""' :+ "'"
+    st_local("overlbls", invtokens(lbls'))
+}
+
+void _ipolate_PDF(real scalar a, real scalar b)
+{
+    real scalar      j, fill
+    string rowvector tmp
+    real rowvector   box, med, avg, d
+    real matrix      idx
+    
+    // add variables
+    tmp = tokens(st_local("pdftmp"))
+    for (j=length(tmp); j; j--) (void) st_addvar("double", st_local(tmp[j]))
+    // collect ids of variables
+    d = st_varindex((st_local("dup"), st_local("at"), st_local("pos")))
+    if (st_local("box_type")=="lines" | st_local("box_type")=="fill") {
+        box = st_varindex((st_local("blo"), st_local("bup"),
+            st_local("box_dlo"), st_local("box_dup"), st_local("box_at")))
+        fill = (st_local("box_type")=="fill") 
+    }
+    if (st_local("median_type")=="line") {
+        med = st_varindex((st_local("med"),
+            st_local("med_dlo"), st_local("med_dup")))
+    }
+    if (st_local("mean_type")=="line") {
+        avg = st_varindex((st_local("avg"),
+            st_local("avg_dlo"), st_local("avg_dup")))
+    }
+    // get index of results
+    idx = _ipolate_PDF_index(a, b)
+    // compute
+    for (j=rows(idx);j;j--) {
+        if (idx[j,2]<=idx[j,1]) continue // must have at least two obs
+        if (length(box)) _ipolate_PDF_box(idx[j,1], idx[j,2], d, box, fill)
+        if (length(med)) _ipolate_PDF_line(idx[j,1], idx[j,2], d, med)
+        if (length(avg)) _ipolate_PDF_line(idx[j,1], idx[j,2], d, avg)
+    }
+}
+
+real matrix _ipolate_PDF_index(real scalar a, real scalar b)
+{
+    real scalar    r
+    real colvector idx
+    
+    // start of result
+    idx = (a-1) :+ selectindex(st_data((a,b), st_local("tag")):<.)
+    // end of result (assuming one empty row between results)
+    r = rows(idx)
+    if (r>1) return((idx, (idx[|2 \ r|]:-2 \ b-1)))
+    return((idx, b-1)) 
+}
+
+void _ipolate_PDF_box(real scalar a, real scalar b, real rowvector did,
+    real rowvector bid, real scalar fill)
+{   // did = [d, at, pos]; bid = [atlo, atup, dlo, dup, dat]
+    real scalar    r
+    real colvector at0, d0, at, d, p
+    
+    at0 = st_data((a,b), did[2])
+    d0  = st_data((a,b), did[1])
+    at  = sort(_st_data(a, bid[1]) \ _st_data(a, bid[2]), 1)
+    d   = mm_ipolate(at0, d0, at)
+    if (hasmissing(d)) return // at is outside of range of at0
+    if (!fill) {
+        _st_store(a,   bid[4], d[1])
+        _st_store(a,   bid[3], 2*_st_data(a, did[3]) - d[1])
+        _st_store(a,   bid[5], at[1])
+        _st_store(a+1, bid[4], d[2])
+        _st_store(a+1, bid[3], 2*_st_data(a, did[3]) - d[2])
+        _st_store(a+1, bid[5], at[2])
+        return
+    }
+    p   = selectindex(at0:>at[1] :& at0:<at[2])
+    at  = at[1] \ at0[p] \ at[2]
+    d   = d[1]  \ d0[p]  \ d[2]
+    r   = a + rows(d) - 1
+    if (r>b) return // not enough space to store result
+    st_store((a,r), bid[4], d)
+    st_store((a,r), bid[3], 2*_st_data(a, did[3]) :- d)
+    st_store((a,r), bid[5], at)
+}
+
+void _ipolate_PDF_line(real scalar a, real scalar b, real rowvector did,
+    real rowvector lid)
+{   // did = [d, at, pos]; lid = [at, dlo, dup]
+    real scalar d
+
+    d = mm_ipolate(st_data((a,b), did[2]), st_data((a,b), did[1]),
+        _st_data(a, lid[1]))
+    _st_store(a, lid[3], d)
+    _st_store(a, lid[2], 2*_st_data(a, did[3]) - d)
+}
+
+
+end
+

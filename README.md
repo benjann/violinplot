@@ -59,9 +59,23 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 6](/images/6.png)
 
+    violinplot wage, pdf(ll(0)) over(industry, sort) color(plasma) box(type(fill)) nowhiskers
+
+![example 7](/images/7.png)
+
 ---
 
 Main changes:
+
+    07nov2022 (version 1.0.6)
+    - suboptions sort(), descending, and tlast added in over()
+    - suboptions type() and stat() added in box(), median(), and mean()
+    - option order() added
+    - p#el() options added; behavior of p#() improved
+    - option n() added
+    - addplot() did not work well if by() has been specified; this is fixed
+    - now using labsize(medium) for main axis labels if there are two levels
+      of axis labels
 
     01nov2022 (version 1.0.5)
     - option by() added
