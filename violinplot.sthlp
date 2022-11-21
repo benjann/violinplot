@@ -1,5 +1,5 @@
 {smcl}
-{* 08nov2022}{...}
+{* 20nov2022}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -36,9 +36,9 @@
 {marker opt}{synopthdr:options}
 {synoptline}
 {syntab :Main}
-{synopt :{opt vert:ical}}vertical plot; default if {cmd:overlay} is specified
+{synopt :{opt vert:ical}}vertical plot
     {p_end}
-{synopt :{opt hor:izontal}}horizontal plot; default if {cmd:overlay} is omitted
+{synopt :{opt hor:izontal}}horizontal plot
     {p_end}
 {synopt :{opt overlay}}create overlays rather than separate items
     {p_end}
@@ -47,13 +47,16 @@
 {synopt :{cmd:over(}{it:{help violinplot##over:spec}}{cmd:)}}display results by
     categories of over-variable
     {p_end}
-{synopt :{opt gap(#)}}size of extra gap between over categories; default is 0.5
-    {p_end}
 {synopt :{opt atover}}use values of over categories as plot positions
     {p_end}
 {synopt :{opt swap}}swap variables and over categories
     {p_end}
 {synopt :{opt nostack}}do not use stacked axis labels, use a legend
+    {p_end}
+{synopt :{opt gap(#)}}size of extra gap between groups of results; default is 0.5
+    {p_end}
+{synopt :{cmd:split(}{it:{help violinplot##split:spec}}{cmd:)}}create half
+    violins
     {p_end}
 {synopt :{cmd:by(}{it:{help violinplot##by:spec}}{cmd:)}}create subgraphs by
     categories of by-variable
@@ -63,7 +66,9 @@
 {synopt :{cmdab:ds:cale(}{it:{help violinplot##dscale:spec}}{cmd:)}}change the
     scaling of the plotted PDFs
     {p_end}
-{synopt :{cmd:tight}}use tight density evaluation grid
+{synopt :{cmdab:abs:olute}}use absolute scaling
+    {p_end}
+{synopt :[{cmd:l}|{cmd:r}]{cmd:tight}}use tight density evaluation grid
     {p_end}
 {synopt :{cmd:range(}{it:{help violinplot##range:spec}}{cmd:)}}restrict maximum
     density evaluation range
@@ -84,6 +89,8 @@
     {p_end}
 {synopt :{opt olab:els(strlist)}}provide custom labels for over categories
     {p_end}
+{synopt :{opt slab:els(strlist)}}provide custom labels for splits
+    {p_end}
 {synopt :{opt bylab:els(strlist)}}provide custom labels for subgraphs
     {p_end}
 {synopt :{opt nolab:el}}use names and values, not labels
@@ -96,8 +103,8 @@
 {synopt :[{cmd:no}]{cmd:line}[{cmd:(}{it:{help violinplot##line:options}}{cmd:)}]}whether
     PDF lines are printed; rendering of PDF lines
     {p_end}
-{synopt :{cmd:fill}[{cmd:(}{it:{help violinplot##fill:options}}{cmd:)}]}add
-    shading; rendering of shading
+{synopt :[{cmd:no}]{cmd:fill}[{cmd:(}{it:{help violinplot##fill:options}}{cmd:)}]}whether
+    shading is added; rendering of shading
     {p_end}
 {synopt :[{ul:{cmd:no}}]{cmdab:whisk:ers}[{cmd:(}{it:{help violinplot##whiskers:opts}}{cmd:)}]}whether
     whiskers are printed; rendering of whiskers
@@ -195,20 +202,21 @@
 
 {phang}
     {opt vertical} draws vertical violins. This is the default if {cmd:overlay}
-    is specified.
+    or {cmd:split()} is specified.
 
 {phang}
-    {opt horizontal} draws horizontal violins. This is the default if {cmd:overlay} is
-    omitted.
+    {opt horizontal} draws horizontal violins. This is the default unless
+    {cmd:overlay} or {cmd:split()} is specified.
 
 {phang}
     {opt overlay} overlays the results from several variables or subpopulations. The
     default is to print each result individually. Overlay implies {cmd:vertical},
-    {cmd:nowhiskers}, and {cmd:nobox}.
+    {cmd:nowhiskers}, and {cmd:nobox}. {cmd:overlay} is not allowed if
+    {cmd:split()} is specified.
 
 {phang}
     {opt asover} treats variable groups (Syntax 2) as over categories. The default
-    is create a separate subgraph for each variable group. {cmd:asover} and
+    is to create a separate subgraph for each variable group. {cmd:asover} and
     {cmd:over()} are not both allowed.
 
 {marker over}{...}
@@ -245,13 +253,6 @@
     order. {cmd:tlast} implies {cmd:total}.
 
 {phang}
-    {opt gap(#)} specifies the size of the extra gap inserted between clusters of
-    results that are grouped together within the same subgraph. This is only relevant
-    if there are multiple outcome variables and multiple over categories (and if {cmd:overlay} is
-    not specified). The default extra gap is 0.5 (i.e. half the size of the space
-    each result consumes).
-
-{phang}
     {opt atover} uses the values of the over variable to determine the plot
     positions of the results rather than placing them along a categorical
     axis. {cmd:atover} requires {cmd:over()} and is only allowed in selected
@@ -279,7 +280,27 @@
     categorical axis, using two levels of labels. This is only relevant
     if there are multiple outcome variables and multiple over
     categories. {cmd:nostack} also assigns different plot styles to the
-    results.
+    results. {cmd:nostack} is not allowed if {cmd:split()} is specified.
+
+{phang}
+    {opt gap(#)} specifies the size of the extra gap inserted between clusters of
+    results that are grouped together within the same subgraph. This is only relevant
+    if there are multiple outcome variables and multiple over categories (and if {cmd:overlay} is
+    not specified). The default extra gap is 0.5 (i.e. half the size of the space
+    each result consumes).
+
+{marker split}{...}
+{phang}
+    {cmd:split(}{varname}[{cmd:,} {opt off:set(#)}]{cmd:)} splits the violins
+    by the two groups identified by the levels of {it:varname}. {cmd:split()}
+    implies {cmd:vertical}, {cmd:fill}, and {cmd:nowhiskers}, sets the default type of
+    {cmd:box()} to {cmd:lines}, and sets the default type of {cmd:median()}
+    to {cmd:line}. Suboption {cmd:offset()} specifies the amount offsetting for
+    whiskers, boxes (if type is {cmd:bar}), medians (if type is {cmd:marker}),
+    and means (if type is {cmd:marker}). The default offset is determined
+    depending on context; values between 0 and 0.25 typically make
+    sense. Options {cmd:nostack} and {cmd:overlay} are not allowed if
+    {cmd:split()} is specified.
 
 {marker by}{...}
 {phang}
@@ -315,19 +336,25 @@
 {pmore}
     where {it:#}>0 is a custom factor by which the default scaling will
     be multiplied and {it:option} is {cmdab:i:ndividual} to determine
-    the scaling for each result individually, {cmdab:g:roup} to determine the
+    the scaling for each violin individually, {cmdab:g:roup} to determine the
     scaling by group of results (i.e. by clusters of results that are grouped
     together within the graph), {cmdab:p:lot} to determine the
-    scaling by plot series (i.e. results that use the same plot style across
-    clusters), or {cmdab:s:ubgraph} to determine the
+    scaling by series across clusters (i.e. 1st violin in each cluster, 2nd violin
+    in each cluster, etc.), or {cmdab:s:ubgraph} to determine the
     scaling by subgraph. The default is to determine the scaling
     jointly across all results.
+
+{phang}
+    {opt absolute} use absolute scaling such that the area under the PDF
+    is proportional to the size of the relevant group.
 
 {phang}
     {cmd:tight} limits the density evaluation grid to the range between the observed
     minimum to the observed maximum of the relevant data. By default, the range across
     which the density is evaluated is slightly larger than the observed range
-    of the data. Specify {cmd:tight} to remove this extra padding. In any case,
+    of the data. Specify {cmd:tight} to remove this extra padding. Specify
+    {cmd:ltight} to remove the extra padding only on the left; specify
+    {cmd:rtight} to remove the extra padding only on the right. In any case,
     the evaluation grid will not go beyond the limits specified by
     {cmd:range()}.
 
@@ -369,7 +396,7 @@
 {dlgtab:Labels}
 
 {phang}
-    {opt lab:els(strlist)} provides a space separated list of custom labels
+    {opt labels(strlist)} provides a space separated list of custom labels
     for the outcome variables. Enclose labels that
     contain spaces in double quotes.
 
@@ -378,6 +405,11 @@
     for the over categories. If {cmd:asover} is specified (Syntax 2),
     {cmd:olabels()} provides labels for the outcome variable groups. Enclose
     labels that contain spaces in double quotes.
+
+{phang}
+    {opt slabels(strlist)} provides a space separated list of custom labels
+    for the groups by which the violins are split. Enclose labels that contain spaces in
+    double quotes.
 
 {phang}
     {opt bylabels(strlist)} provides a space separated list of custom titles
@@ -409,8 +441,9 @@
 
 {marker fill}{...}
 {phang}
-    {cmd:fill}[{cmd:(}{it:options}{cmd:)}] adds shading to the PDF. {it:options}
-    are as follows.
+    [{cmd:no}]{cmd:fill}[{cmd:(}{it:options}{cmd:)}] determines
+    whether shading is added to the PDF. The default is to omit shading unless
+    {cmd:split()} is specified. {it:options} are as follows.
 
 {phang2}
     {opth s:elect(numlist)} restricts the set of results to be affected. By
@@ -432,7 +465,7 @@
 {phang}
     [{cmd:no}]{cmdab:whiskers}[{cmd:(}{it:options}{cmd:)}] determines
     whether the whiskers are printed or not. The default is to print the whiskers
-    unless option {cmd:overlay} is specified. Specify {it:options} to affect the
+    unless {cmd:overlay} or {cmd:split()} is specified. Specify {it:options} to affect the
     rendering of the whiskers; see help {it:{help line_options}}.
 
 {marker box}{...}
@@ -445,10 +478,11 @@
 {phang2}
     {opt type(type)} sets the type of plot to by used, where {it:type} can
     be {cmdab:b:ar}, {cmdab:f:ill}, or {cmdab:l:ines}. The default is
-    {cmd:type(bar)}, which prints the box as a bar. Specify {cmd:type(fill)}
-    to display the box by adding shading to the density estimate between the
-    lower and upper bounds. Type {cmd:type(lines)} to display the box as two lines
-    across the density estimate, one for each bound.
+    {cmd:type(bar)} unless {cmd:split()} is specified, which prints the box as a
+    bar. Specify {cmd:type(fill)} to display the box by adding shading to the
+    density estimate between the lower and upper bounds. Type {cmd:type(lines)}
+    to display the box as two lines across the density estimate, one for each
+    bound; this is the default if {cmd:split()} is specified.
 
 {pmore2}
     Note that twoway plottype {helpb twoway_rspike:rspike}, not
@@ -481,7 +515,9 @@
     {it:line_options} are specified. In case of {cmd:type(fill)}, the default is to apply
     {cmd:fintensity(50)} and {cmd:lcolor(%0)} to the shading; the former, but not the latter,
     will be skipped if any {it:area_options} are specified (specify, e.g.,
-    {cmd:lcolor(%100)} to override the latter).
+    {cmd:lcolor(%100)} to override the latter). In case of {cmd:type(lines)}, the
+    default is to apply {cmd:plattern(shortdash)}; this is skipped if any
+    {it:line_options} are specified.
 
 {marker median}{...}
 {phang}
@@ -491,12 +527,13 @@
 
 {phang2}
     {opt type(type)} sets the type of plot to by used, where {it:type} can
-    be {cmdab:m:arker} or {cmdab:l:ine}. The default is
-    {cmd:type(marker)}, which prints the median as a marker. Specify {cmd:type(line)}
-    to display the median as a line across the density estimate. Note that {cmd:type(line)}
-    will not display anything if option {helpb violinplot##range:range()} has been
-    applied and the selected range is such that median lies outside the density
-    evaluation range.
+    be {cmdab:m:arker} or {cmdab:l:ine}. The default is {cmd:type(marker)}
+    unless {cmd:split()} is specified, which prints the median as a marker. Specify
+    {cmd:type(line)} to display the median as a line across the density
+    estimate. This is the default if {cmd:split()} is specified. Note that
+    {cmd:type(line)} will not display anything if option
+    {helpb violinplot##range:range()} has been applied and the selected range
+    is such that median lies outside the density evaluation range.
 
 {phang2}
     {opt stat(statistic)} selects a custom statistic to be used instead of the
@@ -538,9 +575,10 @@
     {it:marker_options} or {it:line_options} are graph options affecting the
     rendering of the mean; see help {it:{help marker_options}} for {cmd:type(marker)}
     and help {it:{help line_options}} for {cmd:type(line)}. In case of {cmd:type(marker)},
-    the default is to apply options {cmd:msymbol(pipe)}, {cmd:msize(huge)}, and,
-    depending on context, {cmd:msangle(90)}; these defaults are skipped if any
-    {it:marker_options} are specified.
+    if {cmd:split()} is omitted, the default is to apply options {cmd:msymbol(pipe)},
+    {cmd:msize(huge)}, and, depending on context, {cmd:msangle(90)}; if
+    {cmd:split()} is specified, the default is to apply {cmd:msymbol(x)}. These
+    defaults are skipped if any {it:marker_options} are specified.
 
 {marker order}{...}
 {phang}
@@ -598,7 +636,8 @@
     {cmd:p2} for the second result, etc.). For example, specify
     {cmd:pstyles(5 3 7)} to use {cmd:p5} for the first result, {cmd:p3} for the second
     result, and {cmd:p7} for the third result. The styles will be recycled
-    if {it:{help numlist}} contains fewer elements than there are result per group.
+    if {it:{help numlist}} contains fewer elements than there are result per group. If
+    {cmd:split()} is specified, only two styles will be used.
 
 {phang}
     {cmd:p}{it:#}{cmd:(}{it:options}{cmd:)} are options to be passed through
@@ -700,6 +739,17 @@
         {p_end}
 
 {pstd}
+    Use option {cmd:split()} to create half violins (whiskers will be omitted, 
+    lines will be used to display box and median, and fill will be added by default):
+
+{p 8 12 2}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) split(union) key(fill)}
+        {p_end}
+{p 8 12 2}
+        . {stata violinplot wage tenure, pdf(ll(0)) over(south) swap gap(0) split(union) absolute}
+        {p_end}
+
+{pstd}
     Use options {cmd:color()} (all elements), {cmd:lcolor()} (PDF lines), {cmd:bcolor()}
     (boxes), etc., to obtain colors from {helpb colorpalette}:
 
@@ -714,7 +764,7 @@
         . {stata violinplot wage, over(industry) color(sb muted) box(type(fill)) median(msymbol(o) msize(vsmall) color(white)) nowhiskers}
         {p_end}
 {p 8 12 2}
-        . {stata violinplot wage, over(industry) color(plasma) fill nobox nowhiskers nomedian}
+        . {stata violinplot wage, over(industry, descending) color(plasma) fill nobox nowhiskers nomedian}
         {p_end}
 
 

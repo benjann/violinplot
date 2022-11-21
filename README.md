@@ -55,17 +55,27 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 5](/images/5.png)
 
-    violinplot wage, pdf(ll(0)) over(industry) color(plasma) fill nomedian nobox nowhiskers
+    violinplot wage ttl_exp tenure, pdf(ll(0)) split(union) key(fill)
 
 ![example 6](/images/6.png)
 
-    violinplot wage, pdf(ll(0)) over(industry, sort) color(plasma) box(type(fill)) nowhiskers
+    violinplot wage, pdf(ll(0)) over(industry) color(plasma) fill nomedian nobox nowhiskers
 
 ![example 7](/images/7.png)
+
+    violinplot wage, pdf(ll(0)) over(industry, sort) color(plasma) box(type(fill)) nowhiskers
+
+![example 8](/images/8.png)
 
 ---
 
 Main changes:
+
+    20nov2022 (version 1.0.7)
+    - options split() and slabels() added
+    - option absolute added
+    - can now also specify ltight or rtight; [l|r]tight is now passed through to
+      dstat; this requires the newest updates of dstat and moremata
 
     07nov2022 (version 1.0.6)
     - suboptions sort(), descending, and tlast added in over()
