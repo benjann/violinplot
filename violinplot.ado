@@ -1,4 +1,4 @@
-*! version 1.0.7  20nov2022  Ben Jann
+*! version 1.0.8  25nov2022  Ben Jann
 
 program violinplot
     version 15
@@ -25,17 +25,18 @@ program violinplot
         cw ///
         LABels(str asis) ///
         OLABels(str asis) ///
+        SLABels(str asis) ///
         BYLABels(str asis) ///
         noLABel ///
         key(str) ///
         order(str) ///
-        NOLINE     LINE     LINE2(str)     LColor(str) ///
-        NOFILL     FILL     FILL2(str)     FColor(str) ///
-        NOWHISKers WHISKers WHISKers2(str) WColor(str) ///
-        NOBOX      BOX      BOX2(str)      BColor(str) ///
-        NOMEDian   MEDian   MEDian2(str)   MEDColor(str) ///
-        NOMEAN     MEAN     MEAN2(str)     MEANColor(str) ///
-        COLor(str) ///
+        NOLINE     LINE     LINE2(str)     LColor(str asis) ///
+        NOFILL     FILL     FILL2(str)     FColor(str asis) ///
+        NOWHISKers WHISKers WHISKers2(str) WColor(str asis) ///
+        NOBOX      BOX      BOX2(str)      BColor(str asis) ///
+        NOMEDian   MEDian   MEDian2(str)   MEDColor(str asis) ///
+        NOMEAN     MEAN     MEAN2(str)     MEANColor(str asis) ///
+        COLor(str asis) ///
         PSTYles(numlist int >0) ///
         BYOPTs(str) ///
         addplot(str asis) * ]

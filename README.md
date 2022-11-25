@@ -71,6 +71,11 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    25nov2022 (1.0.8)
+    - option slabels() did not work as expected; this is fixed
+    - options color(), lcolor(), fcolor() etc. did not allow color specifications
+      enclosed in double quotes; this is fixed
+
     20nov2022 (version 1.0.7)
     - options split() and slabels() added
     - option absolute added
