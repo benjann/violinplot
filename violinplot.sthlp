@@ -1,5 +1,5 @@
 {smcl}
-{* 20nov2022}{...}
+{* 28nov2022}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -36,26 +36,30 @@
 {marker opt}{synopthdr:options}
 {synoptline}
 {syntab :Main}
-{synopt :{opt vert:ical}}vertical plot
+{synopt :{opt vert:ical}}vertical violins
     {p_end}
-{synopt :{opt hor:izontal}}horizontal plot
+{synopt :{opt hor:izontal}}horizontal violins
     {p_end}
-{synopt :{opt overlay}}create overlays rather than separate items
+{synopt :{opt l:eft}}print left half of violin
     {p_end}
-{synopt :{opt asover}}treat variable groups as over categories
+{synopt :{opt r:ight}}print right half of violin
     {p_end}
-{synopt :{cmd:over(}{it:{help violinplot##over:spec}}{cmd:)}}display results by
+{synopt :{opt overl:ay}}create overlays rather than separate violins
+    {p_end}
+{synopt :{opt aso:ver}}treat variable groups as over categories
+    {p_end}
+{synopt :{cmdab:o:ver(}{it:{help violinplot##over:spec}}{cmd:)}}display results by
     categories of over-variable
     {p_end}
-{synopt :{opt atover}}use values of over categories as plot positions
+{synopt :{opt ato:ver}}use values of over categories as plot positions
     {p_end}
 {synopt :{opt swap}}swap variables and over categories
     {p_end}
-{synopt :{opt nostack}}do not use stacked axis labels, use a legend
+{synopt :{opt nost:ack}}do not use stacked axis labels, use a legend
     {p_end}
 {synopt :{opt gap(#)}}size of extra gap between groups of results; default is 0.5
     {p_end}
-{synopt :{cmd:split(}{it:{help violinplot##split:spec}}{cmd:)}}create half
+{synopt :{cmdab:sp:lit(}{it:{help violinplot##split:varname}}{cmd:)}}create half
     violins
     {p_end}
 {synopt :{cmd:by(}{it:{help violinplot##by:spec}}{cmd:)}}create subgraphs by
@@ -70,7 +74,7 @@
     {p_end}
 {synopt :[{cmd:l}|{cmd:r}]{cmd:tight}}use tight density evaluation grid
     {p_end}
-{synopt :{cmd:range(}{it:{help violinplot##range:spec}}{cmd:)}}restrict maximum
+{synopt :{cmdab:ra:nge(}{it:{help violinplot##range:spec}}{cmd:)}}restrict maximum
     density evaluation range
     {p_end}
 {synopt :{opt n(#)}}size of evaluation grid; default is {cmd:n(99)}
@@ -100,16 +104,16 @@
     {p_end}
 
 {syntab :Elements}
-{synopt :[{cmd:no}]{cmd:line}[{cmd:(}{it:{help violinplot##line:options}}{cmd:)}]}whether
+{synopt :[{ul:{cmd:no}}]{cmdab:l:ine}[{cmd:(}{it:{help violinplot##line:options}}{cmd:)}]}whether
     PDF lines are printed; rendering of PDF lines
     {p_end}
-{synopt :[{cmd:no}]{cmd:fill}[{cmd:(}{it:{help violinplot##fill:options}}{cmd:)}]}whether
+{synopt :[{ul:{cmd:no}}]{cmdab:f:ill}[{cmd:(}{it:{help violinplot##fill:options}}{cmd:)}]}whether
     shading is added; rendering of shading
     {p_end}
-{synopt :[{ul:{cmd:no}}]{cmdab:whisk:ers}[{cmd:(}{it:{help violinplot##whiskers:opts}}{cmd:)}]}whether
+{synopt :[{ul:{cmd:no}}]{cmdab:w:hiskers}[{cmd:(}{it:{help violinplot##whiskers:opts}}{cmd:)}]}whether
     whiskers are printed; rendering of whiskers
     {p_end}
-{synopt :[{cmd:no}]{cmd:box}[{cmd:(}{it:{help violinplot##box:options}}{cmd:)}]}whether
+{synopt :[{ul:{cmd:no}}]{cmdab:b:ox}[{cmd:(}{it:{help violinplot##box:options}}{cmd:)}]}whether
     box is printed; rendering of box
     {p_end}
 {synopt :[{ul:{cmd:no}}]{cmdab:med:ian}[{cmd:(}{it:{help violinplot##median:opts}}{cmd:)}]}whether
@@ -118,35 +122,44 @@
 {synopt :{cmd:mean}[{cmd:(}{it:{help violinplot##mean:options}}{cmd:)}]}add marker for mean;
     rendering of mean
     {p_end}
-{synopt :{cmd:order(}{it:{help violinplot##order:list}}{cmd:)}}change order in which
+{synopt :{cmd:rag}[{cmd:(}{it:{help violinplot##rag:options}}{cmd:)}]}add markers for data points;
+    rendering of the rag
+    {p_end}
+{synopt :{cmdab:ord:er(}{it:{help violinplot##order:list}}{cmd:)}}change order in which
     elements are printed
+    {p_end}
+{synopt :{opt off:set(#)}}shift position of box plot (and rag) by {it:#}
+    {p_end}
+{synopt :{opt doff:set(#)}}shift position of PDF by {it:#}
     {p_end}
 
 {syntab :Colors}
-{synopt :{cmdab:col:or(}{it:{help violinplot##color:spec}}{cmd:)}}assign colors
+{synopt :{cmdab:c:olors(}{it:{help violinplot##colors:spec}}{cmd:)}}assign colors
     to results, affecting all elements
     {p_end}
-{synopt :{opt lc:olor(spec)}}like {helpb violinplot##color:color()}, but only affecting PDF lines
+{synopt :{opt lc:olors(spec)}}like {helpb violinplot##colors:colors()}, but only affecting PDF lines
     {p_end}
-{synopt :{opt fc:olor(spec)}}like {helpb violinplot##color:color()}, but only affecting shading
+{synopt :{opt fc:olors(spec)}}like {helpb violinplot##colors:colors()}, but only affecting shading
     {p_end}
-{synopt :{opt wc:olor(spec)}}like {helpb violinplot##color:color()}, but only affecting whiskers
+{synopt :{opt wc:olors(spec)}}like {helpb violinplot##colors:colors()}, but only affecting whiskers
     {p_end}
-{synopt :{opt bc:olor(spec)}}like {helpb violinplot##color:color()}, but only affecting box
+{synopt :{opt bc:olors(spec)}}like {helpb violinplot##colors:colors()}, but only affecting box
     {p_end}
-{synopt :{opt medc:olor(spec)}}like {helpb violinplot##color:color()}, but only affecting median
+{synopt :{opt medc:olors(spec)}}like {helpb violinplot##colors:colors()}, but only affecting median
     {p_end}
-{synopt :{opt meanc:olor(spec)}}like {helpb violinplot##color:color()}, but only affecting mean
+{synopt :{opt meanc:olors(spec)}}like {helpb violinplot##colors:colors()}, but only affecting mean
+    {p_end}
+{synopt :{opt ragc:olors(spec)}}like {helpb violinplot##colors:colors()}, but only affecting rag
     {p_end}
 
 {syntab :Other}
-{synopt :{cmdab:psty:les(}{it:{help violinplot##pstyles:numlist}})}assign plot styles to results
+{synopt :{cmdab:psty:les(}{it:{help violinplot##pstyles:numlist}}{cmd:)}}assign plot styles to results
     {p_end}
-{synopt :{cmd:p}{it:#}{cmd:(}{it:options}{cmd:)}}options passed through to #th result (within group)
+{synopt :{cmd:p}{it:#}{cmd:(}{it:{help violinplot##pnum:options}}{cmd:)}}options passed through to #th result (within group)
     {p_end}
-{synopt :{cmd:p}{it:#}{it:el}{cmd:(}{it:options}{cmd:)}}options passed through to element of #th result (within group)
+{synopt :{cmd:p}{it:#}{it:el}{cmd:(}{it:{help violinplot##pnumel:options}}{cmd:)}}options passed through to element of #th result (within group)
     {p_end}
-{synopt :{cmdab:byopt:s(}{it:{help by_option:byopts}}{cmd:)}}options passed through
+{synopt :{cmdab:byopt:s(}{it:{help violinplot##byopts:byopts}}{cmd:)}}options passed through
     to {helpb by_option:by()}
     {p_end}
 {synopt :{cmdab:addplot(}{it:{help addplot_option:plot}}{cmd:)}}add other plots to the graph
@@ -202,11 +215,19 @@
 
 {phang}
     {opt vertical} draws vertical violins. This is the default if {cmd:overlay}
-    or {cmd:split()} is specified.
+    (but not {cmd:left} or {cmd:right}) or {cmd:split()} is specified.
 
 {phang}
     {opt horizontal} draws horizontal violins. This is the default unless
-    {cmd:overlay} or {cmd:split()} is specified.
+    {cmd:overlay} (but not {cmd:left} or {cmd:right}) or {cmd:split()} is specified.
+
+{phang}
+    {opt left} prints the left half of each violin. The default is to print both
+    halves.
+
+{phang}
+    {opt right} prints the right half of each violin. The default is to print both
+    halves.
 
 {phang}
     {opt overlay} overlays the results from several variables or subpopulations. The
@@ -291,15 +312,11 @@
 
 {marker split}{...}
 {phang}
-    {cmd:split(}{varname}[{cmd:,} {opt off:set(#)}]{cmd:)} splits the violins
+    {opth split(varname)} splits the violins
     by the two groups identified by the levels of {it:varname}. {cmd:split()}
     implies {cmd:vertical}, {cmd:fill}, and {cmd:nowhiskers}, sets the default type of
     {cmd:box()} to {cmd:lines}, and sets the default type of {cmd:median()}
-    to {cmd:line}. Suboption {cmd:offset()} specifies the amount offsetting for
-    whiskers, boxes (if type is {cmd:bar}), medians (if type is {cmd:marker}),
-    and means (if type is {cmd:marker}). The default offset is determined
-    depending on context; values between 0 and 0.25 typically make
-    sense. Options {cmd:nostack} and {cmd:overlay} are not allowed if
+    to {cmd:line}. Options {cmd:nostack} and {cmd:overlay} are not allowed if
     {cmd:split()} is specified.
 
 {marker by}{...}
@@ -344,8 +361,14 @@
     scaling by subgraph. The default is to determine the scaling
     jointly across all results.
 
+{pmore}
+    You can also specify {cmd:dscale(.)} to omit rescaling. In this case,
+    the original scale of each PDF will be retained and, if the graph
+    only includes a single violin (per subgraph) or a single overlay of multiple
+    violins (per subgraph), axis labels for the scale will be added.
+
 {phang}
-    {opt absolute} use absolute scaling such that the area under the PDF
+    {opt absolute} uses absolute scaling such that the area under the PDF
     is proportional to the size of the relevant group.
 
 {phang}
@@ -424,8 +447,8 @@
     {opt key(element)} selects the plot element to be used in legend
     keys. This is only relevant in cases in which a legend is
     displayed. Depending on context, {it:element} is one of {cmdab:l:ine},
-    {cmdab:f:ill}, {cmdab:w:hiskers}, {cmdab:b:ox}, {cmdab:med:ian}, or {cmd:mean} (elements
-    that are not plotted will not be available). The default is
+    {cmdab:f:ill}, {cmdab:w:hiskers}, {cmdab:b:ox}, {cmdab:med:ian}, {cmd:mean},
+    or {cmd:rag} (elements that are not plotted will not be available). The default is
     {cmd:key(line)} or, if option {cmd:noline} has been specified,
     {cmd:key(fill)}. {cmd:key(fill)} cannot be combined with {cmd:fill(select())}.
 
@@ -476,7 +499,7 @@
     are as follows.
 
 {phang2}
-    {opt type(type)} sets the type of plot to by used, where {it:type} can
+    {opt t:ype(type)} sets the type of plot to by used, where {it:type} can
     be {cmdab:b:ar}, {cmdab:f:ill}, or {cmdab:l:ines}. The default is
     {cmd:type(bar)} unless {cmd:split()} is specified, which prints the box as a
     bar. Specify {cmd:type(fill)} to display the box by adding shading to the
@@ -498,7 +521,7 @@
     bound lies outside the density evaluation range.
 
 {phang2}
-    {opt stat(lo up)} selects custom statistics to be used for the
+    {opt s:tatistics(lo up)} selects custom statistics to be used for the
     lower and upper bounds of the box. Any statistics supported by
     {helpb dstat##stats:dstat} are allowed. Default is {cmd:stat(p25 p75)}
     (lower and upper quartile). For example, type {cmd:stat(p10 p90)} to print
@@ -526,7 +549,7 @@
     marker. {it:options} are as follows.
 
 {phang2}
-    {opt type(type)} sets the type of plot to by used, where {it:type} can
+    {opt t:ype(type)} sets the type of plot to by used, where {it:type} can
     be {cmdab:m:arker} or {cmdab:l:ine}. The default is {cmd:type(marker)}
     unless {cmd:split()} is specified, which prints the median as a marker. Specify
     {cmd:type(line)} to display the median as a line across the density
@@ -536,7 +559,7 @@
     is such that median lies outside the density evaluation range.
 
 {phang2}
-    {opt stat(statistic)} selects a custom statistic to be used instead of the
+    {opt s:tatistic(statistic)} selects a custom statistic to be used instead of the
     median. Any statistic supported by {helpb dstat##stats:dstat} is allowed. Default
     is {cmd:stat(median)}. For example, type {cmd:stat(hl)} to use the
     Hodges-Lehmann location measure.
@@ -547,7 +570,7 @@
     and help {it:{help line_options}} for {cmd:type(line)}. In case of {cmd:type(marker)},
     the default is to apply options {cmd:msymbol(O)} and
     {cmd:msize(vsmall)} if a box of type {cmd:bar} is displayed, and to apply
-    {cmd:mcolor(white)} if a box of type {cmd:bar} is displayed and {cmd:medcolor()} is
+    {cmd:mcolor(white)} if a box of type {cmd:bar} is displayed and {cmd:medcolors()} is
     not specified; these defaults are skipped if any {it:marker_options} are
     specified.
 
@@ -557,7 +580,7 @@
     mean. {it:options} are as follows.
 
 {phang2}
-    {opt type(type)} sets the type of plot to by used, where {it:type} can
+    {opt t:ype(type)} sets the type of plot to by used, where {it:type} can
     be {cmdab:m:arker} or {cmdab:l:ine}. The default is
     {cmd:type(marker)}, which prints the mean as a marker. Specify {cmd:type(line)}
     to display the mean as a line across the density estimate. Note that {cmd:type(line)}
@@ -566,7 +589,7 @@
     evaluation range.
 
 {phang2}
-    {opt stat(statistic)} selects a custom statistic to be used instead of the
+    {opt s:tatistic(statistic)} selects a custom statistic to be used instead of the
     mean. Any statistic supported by {helpb dstat##stats:dstat} is allowed. Default
     is {cmd:stat(mean)} (arithmetic mean). For example, type {cmd:stat(trim(5))} to use
     the 5% trimmed mean.
@@ -580,21 +603,94 @@
     {cmd:split()} is specified, the default is to apply {cmd:msymbol(x)}. These
     defaults are skipped if any {it:marker_options} are specified.
 
+{marker rag}{...}
+{phang}
+    {cmd:rag}[{cmd:(}{it:options}{cmd:)}] prints a rag of markers, one marker for each
+    data point. {it:options} are as follows.
+
+{phang2}
+    {opt out:sides} only includes outside values, that is, data points that are
+    smaller (larger) than the lower (upper) limit of the lower (upper)
+    whisker. The default is to include all data points.
+
+{phang2}
+    {opt bout:sides} includes values that are smaller (larger) than the lower
+    (upper) limit of the box. {cmd:boutsides} implies {cmd:outsides}
+
+{phang2}
+    {opt off:set(#)} shifts the position of the rag by {it:#}. The default is to
+    shift the rag as set by the global {helpb violinplot##offset:offset()}
+    option. Use suboption {opt offset()} to override this default (i.e., if you
+    want to use different offsets for the box plot and the rag).
+
+{phang2}
+    {opt sp:read}[{cmd:(}{it:#}{cmd:)}] spreads out the markers by
+    adding beta distributed random errors to their positions. At each level of
+    the data, the error distribution will be scaled in proportion
+    to the density estimate at that level (such that the rag mimics the shape of the
+    violin). Argument {it:#} in [0.001, 100] sets the degree of
+    spreading; {it:#}=100 (maximum spreading) is equivalent to using
+    a uniform error distribution; the default is {it:#}=1 (moderate spreading).
+
+{phang2}
+    {opt l:eft} spreads the rag in direction of the left half of the violin. The
+    default is to spread in both directions. Suboption {cmd:left} is implied if
+    global option {cmd:left} or global option {cmd:split()} is specified. Specify
+    suboption {cmd:right}, or both {cmd:left} and {cmd:right}, to override this behavior.
+
+{phang2}
+    {opt r:ight} spreads the rag in direction of the right half of the violin. The
+    default is to spread in both directions. Suboption {cmd:right} is implied if
+    global option {cmd:right} is specified. Specify suboption
+    {cmd:left}, or both {cmd:left} and {cmd:right}, to override this behavior.
+
+{phang2}
+    {it:marker_options} are graph options affecting the rendering of the
+    markers; see help {it:{help marker_options}}. By default, options
+    {cmd:msymbol(pipe)} and, depending on context, {cmd:msangle(90)} are
+    applied; you can override the default by specifying these options
+    explicitly.
+
 {marker order}{...}
 {phang}
     {opt order(list)} changes the order in which the elements are placed on the
     plot (determining whether an element is in the foreground or in the
     background). {it:list} is a space separated list of elements, where an element
     is one of {cmdab:l:ine}, {cmdab:f:ill}, {cmdab:w:hiskers}, {cmdab:b:ox}, {cmdab:med:ian},
-    and {cmd:mean} (each element can only be listed once; only elements that are
+    {cmd:mean}, and {cmd:rag} (each element can only be listed once; only elements that are
     included in the plot are allowed). Elements not included in the list will be
     added last (in their default order). The default order depends on context.
 
+{marker offset}{...}
+{phang}
+    {opt offset(#)} shifts the position of the elements of the box plot
+    (whiskers, box if type is {cmd:bar}, median if type is {cmd:marker}, mean
+    if type is {cmd:marker}) by {it:#}. The default is to place the box plot
+    at the center of the violin; {it:#}>0 shift the box plot to the left side of
+    the violin; {it:#}<0 shifts the box plot to the right. A violin
+    typically consumes space of up to one unit, so that |{it:#}| < 0.5 usually makes
+    sense.
+
+{pmore}
+    Note on usage of {cmd:offset()} together with {cmd:split()}: If {cmd:split()}
+    is specified, {it:#}>0 shifts the box plot into the
+    relevant half violin (and {it:#}<0 shifts the box plot into the
+    other half), and a default offset of about 1% of the range of
+    the categorical axis is applied (so that the box plots of the two halves
+    are not printed on top of each other). You can override this default by providing a
+    custom {cmd:offset()}.
+
+{phang}
+    {opt doffset(#)} shifts position of PDF (line and fill) by {it:#}. The
+    default is to center the violin at the corresponding tick of the categorical
+    axis. {it:#}>0 shifts the violin up/to the left; {it:#}<0 shifts
+    the violin down/to the right.
+
 {dlgtab:Colors}
 
-{marker color}{...}
+{marker colors}{...}
 {phang}
-    {opt color(spec)} assigns colors to the results, affecting all elements
+    {opt colors(spec)} assigns colors to the results, affecting all elements
     of the violin plot (except the median depending on context). The colors will
     be recycled across groups of results and across subgraphs. {it:spec} is
 
@@ -608,22 +704,25 @@
     for all variables.
 
 {phang}
-    {opt lcolor(spec)} is like {helpb violinplot##color:color()}, but only affects the PDF lines.
+    {opt lcolors(spec)} is like {helpb violinplot##colors:colors()}, but only affects the PDF lines.
 
 {phang}
-    {opt fcolor(spec)} is like {helpb violinplot##color:color()}, but only affects the shading.
+    {opt fcolors(spec)} is like {helpb violinplot##colors:colors()}, but only affects the shading.
 
 {phang}
-    {opt wcolor(spec)} is like {helpb violinplot##color:color()}, but only affects the  whiskers.
+    {opt wcolors(spec)} is like {helpb violinplot##colors:colors()}, but only affects the  whiskers.
 
 {phang}
-    {opt bcolor(spec)} is like {helpb violinplot##color:color()}, but only affects the IQR box.
+    {opt bcolors(spec)} is like {helpb violinplot##colors:colors()}, but only affects the IQR box.
 
 {phang}
-    {opt medcolor(spec)} is like {helpb violinplot##color:color()}, but only affects the median.
+    {opt medcolors(spec)} is like {helpb violinplot##colors:colors()}, but only affects the median.
 
 {phang}
-    {opt meancolor(spec)} is like {helpb violinplot##color:color()}, but only affects the mean.
+    {opt meancolors(spec)} is like {helpb violinplot##colors:colors()}, but only affects the mean.
+
+{phang}
+    {opt ragcolors(spec)} is like {helpb violinplot##colors:colors()}, but only affects the rag.
 
 {dlgtab:Other}
 
@@ -639,19 +738,22 @@
     if {it:{help numlist}} contains fewer elements than there are result per group. If
     {cmd:split()} is specified, only two styles will be used.
 
+{marker pnum}{...}
 {phang}
-    {cmd:p}{it:#}{cmd:(}{it:options}{cmd:)} are options to be passed through
+    {cmd:p}{it:#}{cmd:(}{it:options}{cmd:)} are graph options to be passed through
     to plots containing the #th result per group.
 
+{marker pnumel}{...}
 {phang}
-    {cmd:p}{it:#}{it:el}{cmd:(}{it:options}{cmd:)} are options to be passed
+    {cmd:p}{it:#}{it:el}{cmd:(}{it:options}{cmd:)} are graph options to be passed
     through to plot element {it:el} of the plots containing the #th result per
     group. Depending on context, {it:el} is one of {cmd:l} (PDF lines),
     {cmd:f} (shading of PDF), {cmd:w} (whiskers), {cmd:b} (box), {cmd:med} (median),
-    and {cmd:mean} (mean) (only elements that are included in the plots are
+    {cmd:mean}, and {cmd:rag} (only elements that are included in the plots are
     allowed). For example, type {cmd:p2med(mcolor(red))} to print the median
     marker of each 2nd result per group in red.
 
+{marker byopts}{...}
 {phang}
     {opt byopts(byopts)} are options passed through to the {cmd:by()} option,
     which is internally used to generate subgraphs; see help {it:{help by_option}}.
@@ -739,7 +841,7 @@
         {p_end}
 
 {pstd}
-    Use option {cmd:split()} to create half violins (whiskers will be omitted, 
+    Use option {cmd:split()} to create half violins (whiskers will be omitted,
     lines will be used to display box and median, and fill will be added by default):
 
 {p 8 12 2}
@@ -750,21 +852,36 @@
         {p_end}
 
 {pstd}
-    Use options {cmd:color()} (all elements), {cmd:lcolor()} (PDF lines), {cmd:bcolor()}
+    Use options {cmd:colors()} (all elements), {cmd:lcolors()} (PDF lines), {cmd:bcolors()}
     (boxes), etc., to obtain colors from {helpb colorpalette}:
 
 {p 8 12 2}
-        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) swap nostack color(Set1)}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) swap nostack colors(Set1)}
         {p_end}
 
 {p 8 12 2}
-        . {stata violinplot wage, over(industry) color(sb muted) nobox nowhiskers median(msymbol(o))}
+        . {stata violinplot wage, over(industry) colors(sb muted) nobox nowhiskers median(msymbol(o))}
         {p_end}
 {p 8 12 2}
-        . {stata violinplot wage, over(industry) color(sb muted) box(type(fill)) median(msymbol(o) msize(vsmall) color(white)) nowhiskers}
+        . {stata violinplot wage, over(industry) colors(sb muted) box(type(fill)) median(msymbol(o) msize(vsmall) color(white)) nowhiskers}
         {p_end}
 {p 8 12 2}
-        . {stata violinplot wage, over(industry, descending) color(plasma) fill nobox nowhiskers nomedian}
+        . {stata violinplot wage, over(industry, descending) colors(plasma) fill nobox nowhiskers nomedian}
+        {p_end}
+
+{pstd}
+    Print data points using option {cmd:rag()}:
+
+{p 8 12 2}
+        . {stata violinplot wage, left rag(offset(-.005) mlcolor(%20)) dscale(.)}
+        {p_end}
+{p 8 12 2}
+        . {stata violinplot wage, left rag(offset(-.005) spread right) dscale(.) ylabel(0(.05).15)}
+        {p_end}
+
+        . {stata sysuse auto, clear}
+{p 8 12 2}
+        . {stata violinplot price, over(foreign) vertical fill rag(spread(5) msymbol(o) mcolor(maroon%50) mlcolor(%0))}
         {p_end}
 
 

@@ -59,17 +59,39 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 6](/images/6.png)
 
-    violinplot wage, pdf(ll(0)) over(industry) color(plasma) fill nomedian nobox nowhiskers
+    violinplot wage, pdf(ll(0)) over(industry) colors(plasma) fill nomedian nobox nowhiskers
 
 ![example 7](/images/7.png)
 
-    violinplot wage, pdf(ll(0)) over(industry, sort) color(plasma) box(type(fill)) nowhiskers
+    violinplot wage, pdf(ll(0)) over(industry, sort) colors(plasma) box(type(fill)) nowhiskers
 
 ![example 8](/images/8.png)
+
+    violinplot wage, left dscale(.) rag(offset(-.005) mlcolor(%20))
+
+![example 9](/images/9.png)
+
+    violinplot wage, over(union) vertical fill absolute ///
+        rag(spread(10) msymbol(o) mcolor(%20) mlc(%0) pstyle(p2))
+
+![example 10](/images/10.png)
 
 ---
 
 Main changes:
+
+    28nov2022 (1.0.9)
+    - options rag(), ragcolors(), and p#rag() added
+    - options left and right added
+    - options offset() and doffset() added; split(, offset())) no longer documented
+      (but still supported for backward compatibility)
+    - option dscale(.) now retains the original scaling of the PDFs (and replaces
+      the categprical axis by a continuous axis if there is only one violin or only
+      one overlay of violins)
+    - shorter abbreviations are now allowed for various options
+    - internal change in how positions of the violins are determines; counting now
+      starts at zero; now using negative counting in case of -horizontal- (rather
+      then using a revered axis)
 
     25nov2022 (1.0.8)
     - option slabels() did not work as expected; this is fixed
