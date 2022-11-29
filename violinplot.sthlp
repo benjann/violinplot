@@ -1,5 +1,5 @@
 {smcl}
-{* 28nov2022}{...}
+{* 29nov2022}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -128,9 +128,9 @@
 {synopt :{cmdab:ord:er(}{it:{help violinplot##order:list}}{cmd:)}}change order in which
     elements are printed
     {p_end}
-{synopt :{opt off:set(#)}}shift position of box plot (and rag) by {it:#}
+{synopt :{opth off:set(numlist)}}shift position of box plot (and rag)
     {p_end}
-{synopt :{opt doff:set(#)}}shift position of PDF by {it:#}
+{synopt :{opth doff:set(numlist)}}shift position of PDF
     {p_end}
 
 {syntab :Colors}
@@ -356,8 +356,8 @@
     the scaling for each violin individually, {cmdab:g:roup} to determine the
     scaling by group of results (i.e. by clusters of results that are grouped
     together within the graph), {cmdab:p:lot} to determine the
-    scaling by series across clusters (i.e. 1st violin in each cluster, 2nd violin
-    in each cluster, etc.), or {cmdab:s:ubgraph} to determine the
+    scaling by series across clusters (i.e. 1st violin in each group, 2nd violin
+    in each group, etc.), or {cmdab:s:ubgraph} to determine the
     scaling by subgraph. The default is to determine the scaling
     jointly across all results.
 
@@ -618,10 +618,11 @@
     (upper) limit of the box. {cmd:boutsides} implies {cmd:outsides}
 
 {phang2}
-    {opt off:set(#)} shifts the position of the rag by {it:#}. The default is to
-    shift the rag as set by the global {helpb violinplot##offset:offset()}
-    option. Use suboption {opt offset()} to override this default (i.e., if you
-    want to use different offsets for the box plot and the rag).
+    {opth off:set(numlist)} shifts the position of the rag(s) by the specified
+    value(s). The default is to shift the rag(s) as set by the global
+    {helpb violinplot##offset:offset()} option. Use suboption {opt offset()}
+    to override this default (i.e., if you want to use different offsets for
+    box plots and rags).
 
 {phang2}
     {opt sp:read}[{cmd:(}{it:#}{cmd:)}] spreads out the markers by
@@ -663,28 +664,36 @@
 
 {marker offset}{...}
 {phang}
-    {opt offset(#)} shifts the position of the elements of the box plot
+    {opth offset(numlist)} shifts the position(s) of the elements of the box plot(s)
     (whiskers, box if type is {cmd:bar}, median if type is {cmd:marker}, mean
-    if type is {cmd:marker}) by {it:#}. The default is to place the box plot
-    at the center of the violin; {it:#}>0 shift the box plot to the left side of
-    the violin; {it:#}<0 shifts the box plot to the right. A violin
-    typically consumes space of up to one unit, so that |{it:#}| < 0.5 usually makes
-    sense.
+    if type is {cmd:marker}) by the specified value(s). The default is to place each box plot
+    at the center of the corresponding violin. A positive value shifts the box plot to the left side of
+    the violin; a negative value shifts the box plot to the right. A violin
+    typically consumes space of up to one unit, so that values between -0.5 and 0.5
+    usually make sense. Specify multiple values
+    to use different values by physical plots; values will be recycled if {it:numlist} has
+    less elements than there are physical plots. A physical plot is a series of results
+    drawn by a single plot command; see {helpb violinplot##pstyles:pstyles()} for details
+    on physical plots.
 
 {pmore}
     Note on usage of {cmd:offset()} together with {cmd:split()}: If {cmd:split()}
-    is specified, {it:#}>0 shifts the box plot into the
-    relevant half violin (and {it:#}<0 shifts the box plot into the
+    is specified, a negative value shifts the box plot into the
+    relevant half violin (and a positive value shifts the box plot into the
     other half), and a default offset of about 1% of the range of
     the categorical axis is applied (so that the box plots of the two halves
-    are not printed on top of each other). You can override this default by providing a
-    custom {cmd:offset()}.
+    are not printed on top of each other). You can override this default by providing
+    custom values(s) in {cmd:offset()}.
 
 {phang}
-    {opt doffset(#)} shifts position of PDF (line and fill) by {it:#}. The
-    default is to center the violin at the corresponding tick of the categorical
-    axis. {it:#}>0 shifts the violin up/to the left; {it:#}<0 shifts
-    the violin down/to the right.
+    {opth doffset(numlist)} shifts the position(s) of the PDF(s) (line and fill) by
+    the specified value(s). The default is to center each violin at the corresponding
+    tick of the categorical axis. A positive value shifts the violin up/to the
+    left; a negative value shifts the violin down/to the right. Specify multiple values
+    to use different values by physical plots; values will be recycled if {it:numlist} has
+    less elements than there are physical plots. A physical plot is a series of results
+    drawn by a single plot command; see {helpb violinplot##pstyles:pstyles()} for details
+    on physical plots.
 
 {dlgtab:Colors}
 
@@ -730,24 +739,35 @@
 {phang}
     {opth pstyles(numlist)} determines the plot styles applied to the
     results. If {cmd:pstyles()} is omitted, the default is to use style {cmd:p1}
-    for all results or, if {cmd:overlay} or {cmd:nostack} is specified, to use consecutive
-    styles across groups of results (i.e. {cmd:p1} for the first result,
-    {cmd:p2} for the second result, etc.). For example, specify
-    {cmd:pstyles(5 3 7)} to use {cmd:p5} for the first result, {cmd:p3} for the second
-    result, and {cmd:p7} for the third result. The styles will be recycled
-    if {it:{help numlist}} contains fewer elements than there are result per group. If
-    {cmd:split()} is specified, only two styles will be used.
+    for all results or, if {cmd:overlay} or {cmd:nostack} is specified, to use
+    consecutive styles across groups of results (i.e. {cmd:p1} for the first result
+    within each group, {cmd:p2} for the second result within each group,
+    etc.). For example, specify {cmd:pstyles(5 3 7)} to use {cmd:p5} for the
+    first result, {cmd:p3} for the second result, and {cmd:p7} for the third
+    result. If {cmd:split()} is specified, only two styles will be used.
+
+{pmore}
+    Technically, the styles specified in {cmd:pstyles()} are applied one after
+    another to the physical plots in the graph, recycling styles
+    if {it:{help numlist}} contains fewer elements than there are physical
+    plots. A physical plot is a series of results drawn by a single plot
+    command. If there is only a single group of results, each result is a
+    separate physical plot. If there are multiple groups of results, physical plots
+    are organized by positions within group (i.e., all first results are a single
+    physical plot, all 2nd results are a single physical plot, and so on). If
+    option {cmd:split()} is specified, all left halves
+    are a single physical plot and all right halves are a single physical plot.
 
 {marker pnum}{...}
 {phang}
     {cmd:p}{it:#}{cmd:(}{it:options}{cmd:)} are graph options to be passed through
-    to plots containing the #th result per group.
+    to the #th physical plot.
 
 {marker pnumel}{...}
 {phang}
     {cmd:p}{it:#}{it:el}{cmd:(}{it:options}{cmd:)} are graph options to be passed
-    through to plot element {it:el} of the plots containing the #th result per
-    group. Depending on context, {it:el} is one of {cmd:l} (PDF lines),
+    through to element {it:el} of the #th physical plot. Depending on context,
+    {it:el} is one of {cmd:l} (PDF lines),
     {cmd:f} (shading of PDF), {cmd:w} (whiskers), {cmd:b} (box), {cmd:med} (median),
     {cmd:mean}, and {cmd:rag} (only elements that are included in the plots are
     allowed). For example, type {cmd:p2med(mcolor(red))} to print the median

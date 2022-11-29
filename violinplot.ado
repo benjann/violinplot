@@ -1,4 +1,4 @@
-*! version 1.0.9  28nov2022  Ben Jann
+*! version 1.1.0  29nov2022  Ben Jann
 
 program violinplot
     version 15
@@ -19,7 +19,7 @@ program violinplot
         LABels(str asis) OLABels(str asis) SLABels(str asis) ///
         BYLABels(str asis) noLABel ///
         key(str) order(str) ///
-        OFFset(numlist max=1) DOFFset(numlist max=1) ///
+        OFFset(numlist) DOFFset(numlist) ///
         NOLine     Line     Line2(str)     LColors(str asis) ///
         NOFill     Fill     Fill2(str)     FColors(str asis) ///
         NOWhiskers Whiskers Whiskers2(str) WColors(str asis) ///
@@ -736,17 +736,45 @@ program violinplot
     if "`rag'"!="" & "`rag_offset'"=="" local rag_offset `offset'
     // - elements of box plot
     if !inlist("`offset'", "", "0") {
-        if "`vertical'"=="" local offset = -`offset'
-        tempname POS
-        qui gen double `POS' = `pos' + `offset'*cond(`splitid'==1,-1,1) `in'
+        if `: list sizeof offset'>1 {
+            tempname POS
+            qui gen double `POS' = .
+            local tmp `offset'
+            forv p = 1/`k_`PID'' {
+                if "`tmp'"=="" local tmp `offset'
+                gettoken num tmp : tmp
+                if "`vertical'"=="" local num = -`num'
+                qui replace `POS' = `pos' + `num'*cond(`splitid'==1,-1,1)/*
+                    */ if ``PID'id'==`p' `in'
+            }
+        }
+        else {
+            if "`vertical'"=="" local offset = -`offset'
+            tempname POS
+            qui gen double `POS' = `pos' + `offset'*cond(`splitid'==1,-1,1) `in'
+        }
     }
     else local POS `pos'
     // - rag
     if "`rag'"!="" {
         if !inlist("`rag_offset'", "", "0") {
-            if "`vertical'"=="" local rag_offset = -`rag_offset'
-            tempname RPOS
-            qui gen double `RPOS' = `pos' + `rag_offset'*cond(`splitid'==1,-1,1) `in'
+            if `: list sizeof rag_offset'>1 {
+                tempname RPOS
+                qui gen double `RPOS' = .
+                local tmp `rag_offset'
+                forv p = 1/`k_`PID'' {
+                    if "`tmp'"=="" local tmp `rag_offset'
+                    gettoken num tmp : tmp
+                    if "`vertical'"=="" local num = -`num'
+                    qui replace `RPOS' = `pos' + `num'*cond(`splitid'==1,-1,1)/*
+                        */ if ``PID'id'==`p' `in'
+                }
+            }
+            else {
+                if "`vertical'"=="" local rag_offset = -`rag_offset'
+                tempname RPOS
+                qui gen double `RPOS' = `pos' + `rag_offset'*cond(`splitid'==1,-1,1) `in'
+            }
         }
         else if "`rag_spread'"!="" {
             tempname RPOS
@@ -779,11 +807,29 @@ program violinplot
     
     // - density
     if !inlist("`doffset'", "", "0") {
-        if "`vertical'"=="" local doffset = -`doffset'
-        tempname Pos
-        qui gen double `Pos' = `pos' + `doffset'*cond(`splitid'==1,-1,1) `in'
-        qui replace `dup'    = `dup' + `doffset'*cond(`splitid'==1,-1,1) `in'
-        qui replace `dlo'    = `dlo' + `doffset'*cond(`splitid'==1,-1,1) `in'
+        if `: list sizeof doffset'>1 {
+            tempname Pos
+            qui gen double `Pos' = .
+            local tmp `doffset'
+            forv p = 1/`k_`PID'' {
+                if "`tmp'"=="" local tmp `doffset'
+                gettoken num tmp : tmp
+                if "`vertical'"=="" local num = -`num'
+                qui replace `Pos' = `pos' + `num'*cond(`splitid'==1,-1,1) /*
+                    */ if ``PID'id'==`p' `in'
+                qui replace `dup' = `dup' + `num'*cond(`splitid'==1,-1,1)/*
+                    */ if ``PID'id'==`p' `in'
+                qui replace `dlo' = `dlo' + `num'*cond(`splitid'==1,-1,1)/*
+                    */ if ``PID'id'==`p' `in'
+            }
+        }
+        else {
+            if "`vertical'"=="" local doffset = -`doffset'
+            tempname Pos
+            qui gen double `Pos' = `pos' + `doffset'*cond(`splitid'==1,-1,1) `in'
+            qui replace `dup'    = `dup' + `doffset'*cond(`splitid'==1,-1,1) `in'
+            qui replace `dlo'    = `dlo' + `doffset'*cond(`splitid'==1,-1,1) `in'
+        }
     }
     else local Pos `pos'
     
@@ -1476,7 +1522,7 @@ program _parse_count_stats
 end
 
 program _parse_rag
-    syntax [, OFFset(numlist max=1)/*
+    syntax [, OFFset(numlist)/*
         */ SPread SPread2(numlist max=1 >=.001 <=100) Left Right/*
         */  BOUTsides OUTsides * ]
     if "`spread'"!="" & "`spread2'"=="" local spread2 1

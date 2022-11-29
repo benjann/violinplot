@@ -71,14 +71,23 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 9](/images/9.png)
 
+    violinplot wage, over(union) overlay left dscale(.) nomedian ///
+        rag(offset(-.005 -0.01) mlcolor(%40))
+
+![example 10](/images/10.png)
+
     violinplot wage, over(union) vertical fill absolute ///
         rag(spread(10) msymbol(o) mcolor(%20) mlc(%0) pstyle(p2))
 
-![example 10](/images/10.png)
+![example 10](/images/11.png)
 
 ---
 
 Main changes:
+
+    29nov2022 (1.1.0)
+    - numlist now allowed in offset(), doffset(), and rag(offset()); numbers
+      will be recycled across physical plots
 
     28nov2022 (1.0.9)
     - options rag(), ragcolors(), and p#rag() added
