@@ -1,5 +1,5 @@
 {smcl}
-{* 29nov2022}{...}
+{* 02dec2022}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -615,7 +615,11 @@
 
 {phang2}
     {opt bout:sides} includes values that are smaller (larger) than the lower
-    (upper) limit of the box. {cmd:boutsides} implies {cmd:outsides}
+    (upper) limit of the box. {cmd:boutsides} implies {cmd:outsides}.
+
+{phang2}
+    {opt u:nique} omits markers for repeated data points. Use this option to
+    reduce graph size in larger datasets.
 
 {phang2}
     {opth off:set(numlist)} shifts the position of the rag(s) by the specified

@@ -1,4 +1,4 @@
-*! version 1.1.0  29nov2022  Ben Jann
+*! version 1.1.1  02dec2022  Ben Jann
 
 program violinplot
     version 15
@@ -521,7 +521,6 @@ program violinplot
     }
     
     // compute results
-    tempname rag_lo rag_up
     local preserve preserve
     if `hasaddplot' local r0 = _N // (append results)
     else            local r0 0
@@ -579,21 +578,8 @@ program violinplot
                             */ `avg' `med' `blo' `bup' `wlo' `wup' `"`qdef'"'
                         // rag: copy data
                         if "`rag'"!="" {
-                            if "`rag_outsides'"!="" {
-                                scalar `rag_lo' = r(`rag_outsides'lo)
-                                scalar `rag_up' = r(`rag_outsides'up)
-                                qui count if `xvar'<. & (`xvar'<`rag_lo' ///
-                                    | `xvar'>`rag_up') & `tousej'
-                                local N = r(N)
-                            }
-                            local b = max(`b', `r1' + `N' + 1)
-                            if `b' > _N {
-                                `preserve'
-                                local preserve
-                                _addobs `b' `touse' `tousej'
-                            }
-                            mata: _copyrag(`a', "`rag_outsides'"!="", /*
-                                */ "`rag_lo'", "`rag_up'")
+                            mata: _copyrag(`a', `b', "`rag_outsides'", /*
+                                */ "`rag_unique'"!="")
                         }
                         // ids
                         qui replace `tag'     = 1   in `a'
@@ -1522,7 +1508,7 @@ program _parse_count_stats
 end
 
 program _parse_rag
-    syntax [, OFFset(numlist)/*
+    syntax [, OFFset(numlist) Unique/*
         */ SPread SPread2(numlist max=1 >=.001 <=100) Left Right/*
         */  BOUTsides OUTsides * ]
     if "`spread'"!="" & "`spread2'"=="" local spread2 1
@@ -1530,6 +1516,7 @@ program _parse_rag
     if      "`boutsides'"!="" local outsides b
     else if "`outsides'"!=""  local outsides w
     c_local rag_offset   `offset'
+    c_local rag_unique   `unique'
     c_local rag_spread   `spread2'
     c_local rag_left     `left'
     c_local rag_right    `right'
@@ -1783,14 +1770,32 @@ version 15
 mata:
 mata set matastrict on
 
-void _copyrag(real scalar a, real scalar out, string scalar lo, string scalar up)
+void _copyrag(real scalar a, real scalar b, string scalar out, real scalar uniq)
 {
+    real scalar    n
     real colvector x
     
+    // get data
     x = st_data(., st_local("xvar"), st_local("tousej"))
     x = select(x, x:<.)
-    if (out) x = select(x, x:<st_numscalar(lo) :| x:>st_numscalar(up))
-    if (length(x)) st_store((a, a+rows(x)-1), st_local("xrag"), x)
+    if (uniq) x = mm_unique(x)
+    if (out!="") x = select(x,
+        x:<st_numscalar("r("+out+"lo)") :| x:>st_numscalar("r("+out+"up)"))
+    if (!length(x)) return // nothing to store
+    // store data
+    n = rows(x)
+    if ((a+n)>b) {
+        // update range and add observations if necessary
+        b = a + n
+        st_local("b", strofreal(b))
+        if (b>st_nobs()) {
+            stata(st_local("preserve"))
+            stata("local preserve")
+            stata("_addobs "+st_local("b")+" "+st_local("touse")+" "+
+                st_local("tousej"))
+        }
+    }
+    st_store((a, a + n - 1), st_local("xrag"), x)
 }
 
 void _over_sort(real rowvector ab)

@@ -85,6 +85,9 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    02dec2022 (1.1.1)
+    - suboption unique added to rag()
+
     29nov2022 (1.1.0)
     - numlist now allowed in offset(), doffset(), and rag(offset()); numbers
       will be recycled across physical plots
