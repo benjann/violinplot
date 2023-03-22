@@ -85,6 +85,9 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    22mar2023 (1.1.2)
+    - violinplot did not work in Stata 15; this is fixed
+
     02dec2022 (1.1.1)
     - suboption unique added to rag()
 

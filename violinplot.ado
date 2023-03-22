@@ -1,4 +1,4 @@
-*! version 1.1.1  02dec2022  Ben Jann
+*! version 1.1.2  22mar2023  Ben Jann
 
 program violinplot
     version 15
@@ -551,7 +551,7 @@ program violinplot
                         if !`x_is_cons' {
                             Fit_PDF "`xvar'" `"`wgt'"' `"`iff'"' "`tight'"/*
                                 */ "`lb'" "`ub'" "`exact'" "`nopt'" `"`pdfopts'"'
-                            local n = colsof(e(b))
+                            local n: colsof e(b)
                         }
                         else local n 1 // skip density estimate if x is constant
                         local a = `r1' + 1
@@ -1696,7 +1696,7 @@ program Fit_PDF
     tempname ll ul wd0 wd
     args xvar wgt iff tight lb ub exact n pdfopts
     qui dstat pdf `xvar' `iff' `wgt', nose `tight' `exact' `n' `pdfopts'
-    local n = colsof(e(b))
+    local n: colsof e(b)
     scalar `ll' = el(e(at),1,1)
     scalar `ul' = el(e(at),1,`n')
     scalar `wd0' = `ul' - `ll'
