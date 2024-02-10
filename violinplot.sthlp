@@ -1,5 +1,5 @@
 {smcl}
-{* 02dec2022}{...}
+{* 10feb2024}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -449,8 +449,8 @@
     displayed. Depending on context, {it:element} is one of {cmdab:l:ine},
     {cmdab:f:ill}, {cmdab:w:hiskers}, {cmdab:b:ox}, {cmdab:med:ian}, {cmd:mean},
     or {cmd:rag} (elements that are not plotted will not be available). The default is
-    {cmd:key(line)} or, if option {cmd:noline} has been specified,
-    {cmd:key(fill)}. {cmd:key(fill)} cannot be combined with {cmd:fill(select())}.
+    {cmd:key(line)} or, if option {cmd:noline} has been specified, the element
+    that is plotted first.
 
 {dlgtab:Elements}
 
@@ -629,13 +629,25 @@
     box plots and rags).
 
 {phang2}
-    {opt sp:read}[{cmd:(}{it:#}{cmd:)}] spreads out the markers by
+    {opt sp:read}[{cmd:(}{it:#1} [{it:#2}]{cmd:)}] spreads out the markers by
     adding beta distributed random errors to their positions. At each level of
     the data, the error distribution will be scaled in proportion
     to the density estimate at that level (such that the rag mimics the shape of the
-    violin). Argument {it:#} in [0.001, 100] sets the degree of
-    spreading; {it:#}=100 (maximum spreading) is equivalent to using
-    a uniform error distribution; the default is {it:#}=1 (moderate spreading).
+    violin). Argument {it:#1} in [0.001, 100] sets the degree of
+    spreading; {it:#1}=100 (maximum spreading) is equivalent to using
+    a uniform error distribution; the default is {it:#1}=1 (moderate spreading).
+
+{pmore2}
+    Optional argument {it:#2} sets the width of the spread to a fixed value
+    rather than making the spread proportional to the density estimate. Specify
+    {it:#2} if you want to generate a uniform rag rather than a rag that mimics
+    the shape of the violin. Unless {cmd:dscale(.)} is specified, argument
+    {it:#2} is in units of the space allocated to each violin
+    (or half-violin). For example, type {cmd:rag(spread(100 0.2))} to generate
+    a uniform rag that has a width of 20 percent (argument {it:#1} is set to
+    100 in this example so that the markers are spread out uniformly across
+    the width). If {cmd:dscale(.)} is specified, argument {it:#2} is in
+    absolute units (or half-units).
 
 {phang2}
     {opt l:eft} spreads the rag in direction of the left half of the violin. The

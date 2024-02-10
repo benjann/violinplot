@@ -85,6 +85,15 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    10feb2024 (1.1.3)
+    - second argument in rag(spread()) now allowed to use a fixed value for the
+      width of the spread (i.e. do not scale the distribution in proportion to the
+      density estimate)
+    - noline and nofill are now both allowed; noline and fill(select()) are now both
+      allowed
+    - key(fill) now also allowed with fill(select()); default key now rearmost
+      element if noline is specified
+
     22mar2023 (1.1.2)
     - violinplot did not work in Stata 15; this is fixed
 

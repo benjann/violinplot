@@ -1,4 +1,4 @@
-*! version 1.1.2  22mar2023  Ben Jann
+*! version 1.1.4  10feb2024  Ben Jann
 
 program violinplot
     version 15
@@ -112,17 +112,7 @@ program violinplot
             exit 198
         }
     }
-    else {
-        if "`nofill'"!="" {
-            di as err "noline and nofill not both allowed"
-            exit 198
-        }
-        if `"`fill_select'"'!="" {
-            di as err "noline and fill(select()) not both allowed"
-            exit 198
-        }
-        local fill fill // set fill on if noline has been specified
-    }
+    else if "`nofill'"=="" local fill fill // set fill on if noline
     // - whiskers option: default is whiskers unless overlay has been specified
     if "`nowhiskers'`overlay'`split'"=="" local whiskers whiskers
     if `"`whiskers2'"'!=""                local whiskers whiskers
@@ -170,7 +160,7 @@ program violinplot
         _parse_mean, `mean2' // returns mean_type, mean2
         if "`mean_type'"=="" local mean_type marker
     }
-    // - rag option: default is noraf
+    // - rag option: default is norag
     if `"`rag2'"'!="" local rag rag
     if "`rag'"!="" {
         if "`norag'"!="" {
@@ -196,7 +186,7 @@ program violinplot
     else                     local stats `"`stats' `median_stat'"'
     if `"`box_stat'"'==""    local stats `"`stats' p25 p75"'
     else                     local stats `"`stats' `box_stat'"'
-    // - list (and order) of plot types / determine legend key
+    // - list of plot types
     local plotlist `fill'
     if "`box_type'"=="fill" local plotlist `plotlist' `box'
     local plotlist `plotlist' `rag' `whiskers'
@@ -206,23 +196,28 @@ program violinplot
     local plotlist `plotlist' `line'
     if "`median_type'"!="line" local plotlist `plotlist' `median'
     if "`mean_type'"!="line"   local plotlist `plotlist' `mean'
+    // - activate (suppressed) line if plotlist is empty
+    if "`plotlist'"=="" {
+        local line line
+        local plotlist line
+        local lineomit 1
+    }
+    else local lineomit 0
+    // - reorder plot types
     if `"`order'"'!="" {
         _parse_order `"`order'"' "`plotlist'" // returns plotlist
     }
+    // - determine legend key
     _parse_key, `key'
     if "`key'"!="" {
         if !`: list key in plotlist' {
             di as err "key(): `key' not available"
             exit 198
         }
-        if "`key'"=="fill" & "`fill_select'"!="" {
-            di as err "key(fill) not allowed with fill(select())"
-            exit 198
-        }
     }
     else {
         if "`line'"!="" local key "line"
-        else            local key "fill"
+        gettoken key : plotlist
     }
     // - further option
     if "`n'"!="" local nopt n(`n')
@@ -770,7 +765,7 @@ program violinplot
         if "`rag_spread'"!="" {
             tempvar drag
             qui gen double `drag' = .
-            mata: _ipolate_PDF_rag(`r0'+1, `r1')
+            mata: _ipolate_PDF_rag(`r0'+1, `r1', `rag_spread_d')
             if "`rag_left'`rag_right'"!="" {
                 if "`rag_left'"!="" {
                     if "`vertical'"!="" local dir -1
@@ -915,14 +910,16 @@ program violinplot
                             local ++ii
                             if "`psty'"=="" local psty `pstyles'
                             gettoken p psty : psty
-                            if !`:list ii in fill_select' continue
                             local ++fkeys
                             _getcolr `i' `fcolors'
                             local popts `axes' `rvert' pstyle(p`p') `p_`i''/*
                                 */ lc(%0) `finten' `colr' `fill2' `p_`i'f'
-                            local pfill `pfill'/*
-                                */ (`plt' if ``By'id'==`j' & ``CLUS'id'==`c'/*
-                                */ & ``PLOT'id'==`i' & `splitid'==`s', `popts')
+                            if !`:list ii in fill_select' local iff 0
+                            else {
+                                local iff ``By'id'==`j' & ``CLUS'id'==`c'/*
+                                    */ & ``PLOT'id'==`i' & `splitid'==`s'
+                            }
+                            local pfill `pfill' (`plt' if `iff', `popts')
                         }
                     }
                 }
@@ -977,14 +974,15 @@ program violinplot
         }
         local lkeys `k_`PID''
         local psty `pstyles'
+        if `lineomit' local iff 0
+        else          local iff "``PID'id'==\`i'"
         forv i = 1/`lkeys' {
             if "`psty'"=="" local psty `pstyles'
             gettoken p psty : psty
             _getcolr `i' `lcolors'
             local popts `axes' `popts0' pstyle(p`p') `p_`i'' `colr' `line2'/*
                 */ `p_`i'l'
-            local pline `pline'/*
-                */ (`plt' if ``PID'id'==`i', cmissing(n) `popts')
+            local pline `pline' (`plt' if `iff', cmissing(n) `popts')
         }
     }
     
@@ -1509,15 +1507,30 @@ end
 
 program _parse_rag
     syntax [, OFFset(numlist) Unique/*
-        */ SPread SPread2(numlist max=1 >=.001 <=100) Left Right/*
+        */ SPread SPread2(numlist max=2 missingokay) Left Right/*
         */  BOUTsides OUTsides * ]
-    if "`spread'"!="" & "`spread2'"=="" local spread2 1
+    gettoken s spread2 : spread2
+    gettoken d         : spread2
+    if "`s'"!="" {
+        if `s'>=. local s 1
+        capt n numlist "`s'", range(>=.001 <=100) 
+        if _rc==1 exit _rc
+        if _rc {
+            di as err "error in spread()"
+            exit _rc
+        }
+        local s `r(numlist)'
+    }
+    else if "`spread'"!="" local s 1
+    if "`s'"!="" local s = 100/`s'
+    if "`d'"=="" local d .
     if "`spread2'"!="" local spread2 = 100/`spread2'
     if      "`boutsides'"!="" local outsides b
     else if "`outsides'"!=""  local outsides w
     c_local rag_offset   `offset'
     c_local rag_unique   `unique'
-    c_local rag_spread   `spread2'
+    c_local rag_spread   `s'
+    c_local rag_spread_d `d'
     c_local rag_left     `left'
     c_local rag_right    `right'
     c_local rag_outsides `outsides'
@@ -1822,7 +1835,7 @@ void _over_sort(real rowvector ab)
     st_local("overlbls", invtokens(lbls'))
 }
 
-void _ipolate_PDF_rag(real scalar a0, real scalar b0)
+void _ipolate_PDF_rag(real scalar a0, real scalar b0, real scalar d)
 {
     real scalar    j, dlo, dup, at, xrag, drag, a, b
     real matrix    idx
@@ -1835,6 +1848,10 @@ void _ipolate_PDF_rag(real scalar a0, real scalar b0)
     idx  = _ipolate_PDF_index(a0, b0)
     for (j=rows(idx);j;j--) {
         a = idx[j,1]; b = idx[j,2]
+        if (d<.) { // fixed value specified by user
+            st_store((a,b), drag, J(b-a+1, 1, d))
+            continue
+        }
         st_store((a,b), drag,
             editmissing(
                 mm_ipolate(st_data((a,b), at),
