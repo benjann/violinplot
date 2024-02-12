@@ -217,7 +217,7 @@ program violinplot
     }
     else {
         if "`line'"!="" local key "line"
-        gettoken key : plotlist
+        else gettoken key : plotlist
     }
     // - further option
     if "`n'"!="" local nopt n(`n')
