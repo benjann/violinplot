@@ -1,5 +1,5 @@
 {smcl}
-{* 10feb2024}{...}
+{* 12feb2024}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -650,10 +650,11 @@
     absolute units (or half-units).
 
 {phang2}
-    {opt st:ack}[{cmd:(}{it:#}{cmd:)}] prints stacks of markers at the unique
+    {opt st:ack}[{cmd:(}[{cmd:*}]{it:#}{cmd:)}] prints stacks of markers at the unique
     values of the data. Use this option to create raindrop plots. Argument
     {it:#} sets the step size between markers within stacks. An appropriate value for the step
-    size is determined from the data if {it:#} is omitted or set to missing. Only
+    size is determined from the data if {it:#} is omitted or set to missing. Type
+    {cmd:*}{it:#} to multiply the default step size by {it:#}. Only
     one of {cmd:stack()} and {cmd:spread()} is allowed.
 
 {phang2}
