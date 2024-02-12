@@ -784,7 +784,7 @@ program violinplot
             }
         }
         else if "`rag_stack'"!="" {
-            mata: _rag_stack(`r0'+1, `r1', `rag_stack', `rag_dir')
+            mata: _rag_stack(`r0'+1, `r1', `rag_stack', `rag_stack2', `rag_dir')
         }
     }
     
@@ -1510,12 +1510,12 @@ end
 program _parse_rag
     syntax [, OFFset(numlist) Unique/*
         */ SPread SPread2(numlist max=2 missingokay)/*
-        */ STack STack2(numlist max=1 missingokay)/*
+        */ STack STack2(str)/*
         */ Left Right/*
         */ BOUTsides OUTsides * ]
     // spread
     if "`spread'`spread2'"!="" {
-        if "`stack'`stack2'"!="" {
+        if `"`stack'`stack2'"'!="" {
             di as err "rag(): spread() and stack() not both allowed"
             exit 198
         }
@@ -1535,13 +1535,26 @@ program _parse_rag
         local spread = 100/`spread'
         if "`spread2'"=="" local spread2 .
     }
-    else if "`stack'`stack2'"!="" {
+    else if `"`stack'`stack2'"'!="" {
         if "`unique'"!="" {
             di as err "rag(): stack() and unique not both allowed"
             exit 198
         }
-        local stack `stack2'
-        if "`stack'"=="" local stack .
+        local stack = substr(`"`stack2'"',1,1)=="*"
+        if `stack' local stack2 = strtrim(substr(`"`stack2'"',2,.))
+        if `"`stack2'"'!="" {
+            capt n numlist "`stack2'", max(1) missingok
+            if _rc==1 exit _rc
+            if _rc {
+                di as err "rag(): error in stack()"
+                exit _rc
+            }
+            local stack2 `r(numlist)'
+            if `stack2'>=. local stack 0
+            else           local ++stack
+        }
+        else local stack2 .
+        /* stack = 1: fixed value, stack = 2: factor; stack = 0: missing */
     }
     // spread
     if      "`boutsides'"!="" local outsides b
@@ -1551,6 +1564,7 @@ program _parse_rag
     c_local rag_spread   `spread'
     c_local rag_spread2  `spread2'
     c_local rag_stack    `stack'
+    c_local rag_stack2   `stack2'
     c_local rag_left     `left'
     c_local rag_right    `right'
     c_local rag_outsides `outsides'
@@ -1855,56 +1869,58 @@ void _over_sort(real rowvector ab)
     st_local("overlbls", invtokens(lbls'))
 }
 
-void _rag_stack(real scalar a0, real scalar b0, real scalar d, real scalar dir)
+void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
+    real scalar val, real scalar dir)
 {
-    real scalar    j, a, b, r, dtmp
-    real scalar    xrag, rpos, spid, dlo, dup
+    real scalar    j, a, b, d, n
+    real scalar    xrag, rpos, spid
     real colvector DIR, D
     real matrix    idx
     
     xrag = st_varindex(st_local("xrag"))
     rpos = st_varindex(st_local("RPOS"))
     spid = st_varindex(st_local("splitid"))
-    dlo  = st_varindex(st_local("dlo"))
-    dup  = st_varindex(st_local("dup"))
+    if (typ!=1) {
+        d = max(abs(st_data((a0,b0), st_local("dup")) - 
+                    st_data((a0,b0), st_local("dlo"))))
+        if (dir) d = d / 2
+        n = 5
+    }
     idx  = _ipolate_PDF_index(a0, b0)
     D    = J(b0-a0+1,1,.)
-    dtmp = .
     for (j=rows(idx);j;j--) {
         a = idx[j,1]; b = idx[j,2]
-        if (d>=.) {
-            r = max(abs(st_data((a,b), dup)-st_data((a,b), dlo)))
-            if (dir) r = r / 2 // one-sided rag
-        }
         if (dir) DIR = (-1):^(st_data((a,b), spid):!=1) * dir
         else     DIR = J(0,1,.)
-        D[|a-a0+1 \ b-a0+1|] = _rag_stack_offset(st_data((a,b), xrag), DIR, r) 
-        dtmp = min((dtmp,r))
+        D[|a-a0+1 \ b-a0+1|] = _rag_stack_offset(st_data((a,b), xrag), DIR, n)
     }
-    if (d>=.) {
-        if (dtmp>=.) dtmp = 0
-        printf("{txt}(stacked rag: step size set to %g)\n", dtmp)
+    if (typ!=1) {
+        d = d / (n - 1) * .8
+        if (d>=.) d = 0
+        printf("{txt}(stacked rag: step size set to %g", d)
+        if (typ) {
+            d = d * val
+            printf(" * %g", val)
+        }
+        printf(")\n")
     }
-    else dtmp = d
-    st_store((a0,b0), rpos, st_data((a0,b0), rpos) + D * dtmp)
+    else d = val
+    st_store((a0,b0), rpos, st_data((a0,b0), rpos) + D * d)
 }
 
-real _rag_stack_offset(real colvector X, real colvector dir, real scalar r)
-{   // assumes X and dir fleeting; modifies r
-    real scalar    j, n, a, b, hasdir, nmax
+real _rag_stack_offset(real colvector X, real colvector dir, real scalar nmax)
+{   // assumes X and dir fleeting; updates nmax
+    real scalar    j, n, a, b, hasdir
     real colvector p, L
     
-    real colvector x
-    
-    hasdir = rows(dir)!=0
     // sort data
     p = order(X,1)
     _collate(X, p)
+    hasdir = rows(dir)!=0
     if (hasdir) _collate(dir, p)
     // identify groups
     L = 0 \ selectindex(_mm_unique_tag(X, 1))
     // generate offsets
-    nmax = 0
     j = rows(L)
     a = L[j--] + 1
     while (j) {
@@ -1915,10 +1931,7 @@ real _rag_stack_offset(real colvector X, real colvector dir, real scalar r)
         nmax = max((nmax, n))
         if (hasdir) X[|a\b|] = (0::n-1) :* dir[|a\b|]
         else        X[|a\b|] = (0::n-1) :- (n-1)/2
-        // note: X:*0 is added so that result will be missing if X is missing
     }
-    // determine step size based on r (max density) and nmax
-    if (r<.) r = r / nmax
     // return offsets
     return(X[invorder(p)])
 }
