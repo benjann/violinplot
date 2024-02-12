@@ -650,6 +650,13 @@
     absolute units (or half-units).
 
 {phang2}
+    {opt st:ack}[{cmd:(}{it:#}{cmd:)}] prints stacks of markers at the unique
+    values of the data. Use this option to create raindrop plots. Argument
+    {it:#} sets the step size between markers within stacks. An appropriate value for the step
+    size is determined from the data if {it:#} is omitted or set to missing. Only
+    one of {cmd:stack()} and {cmd:spread()} is allowed.
+
+{phang2}
     {opt l:eft} spreads the rag in direction of the left half of the violin. The
     default is to spread in both directions. Suboption {cmd:left} is implied if
     global option {cmd:left} or global option {cmd:split()} is specified. Specify

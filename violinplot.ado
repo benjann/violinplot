@@ -1,4 +1,4 @@
-*! version 1.1.4  10feb2024  Ben Jann
+*! version 1.1.5  12feb2024  Ben Jann
 
 program violinplot
     version 15
@@ -757,32 +757,34 @@ program violinplot
                 qui gen double `RPOS' = `pos' + `rag_offset'*cond(`splitid'==1,-1,1) `in'
             }
         }
-        else if "`rag_spread'"!="" {
+        else if "`rag_spread'`rag_stack'"!="" {
             tempname RPOS
             qui gen double `RPOS' = `pos' `in'
         }
         else local RPOS `pos'
+        if "`rag_spread'`rag_stack'"!="" {
+            local rag_dir = "`rag_left'`rag_right'"!=""
+            if `rag_dir' {
+                if      "`rag_left'"!="" & "`vertical'"!=""  local rag_dir -1
+                else if "`rag_right'"!="" & "`vertical'"=="" local rag_dir -1
+            }
+        }
         if "`rag_spread'"!="" {
             tempvar drag
             qui gen double `drag' = .
-            mata: _ipolate_PDF_rag(`r0'+1, `r1', `rag_spread_d')
-            if "`rag_left'`rag_right'"!="" {
-                if "`rag_left'"!="" {
-                    if "`vertical'"!="" local dir -1
-                    else                local dir  1
-                }
-                else {
-                    if "`vertical'"!="" local dir  1
-                    else                local dir -1
-                }
+            mata: _ipolate_PDF_rag(`r0'+1, `r1', `rag_spread2')
+            if `rag_dir' {
                 qui replace `RPOS' = `RPOS' +/*
                     */ abs(rbeta(`rag_spread', `rag_spread')-.5)*`drag'/*
-                    */ * cond(`splitid'==1,`dir',0-`dir') `in'
+                    */ * cond(`splitid'==1,`rag_dir',0-`rag_dir') `in'
             }
             else {
                 qui replace `RPOS' = `RPOS' +/*
                     */ (rbeta(`rag_spread', `rag_spread')-.5)*`drag' `in'
             }
+        }
+        else if "`rag_stack'"!="" {
+            mata: _rag_stack(`r0'+1, `r1', `rag_stack', `rag_dir')
         }
     }
     
@@ -1507,30 +1509,48 @@ end
 
 program _parse_rag
     syntax [, OFFset(numlist) Unique/*
-        */ SPread SPread2(numlist max=2 missingokay) Left Right/*
-        */  BOUTsides OUTsides * ]
-    gettoken s spread2 : spread2
-    gettoken d         : spread2
-    if "`s'"!="" {
-        if `s'>=. local s 1
-        capt n numlist "`s'", range(>=.001 <=100) 
-        if _rc==1 exit _rc
-        if _rc {
-            di as err "error in spread()"
-            exit _rc
+        */ SPread SPread2(numlist max=2 missingokay)/*
+        */ STack STack2(numlist max=1 missingokay)/*
+        */ Left Right/*
+        */ BOUTsides OUTsides * ]
+    // spread
+    if "`spread'`spread2'"!="" {
+        if "`stack'`stack2'"!="" {
+            di as err "rag(): spread() and stack() not both allowed"
+            exit 198
         }
-        local s `r(numlist)'
+        gettoken spread spread2 : spread2
+        gettoken spread2        : spread2
+        if "`spread'"!="" {
+            if `spread'>=. local spread 1
+            capt n numlist "`spread'", range(>=.001 <=100) 
+            if _rc==1 exit _rc
+            if _rc {
+                di as err "rag(): error in spread()"
+                exit _rc
+            }
+            local spread `r(numlist)'
+        }
+        else local spread 1
+        local spread = 100/`spread'
+        if "`spread2'"=="" local spread2 .
     }
-    else if "`spread'"!="" local s 1
-    if "`s'"!="" local s = 100/`s'
-    if "`d'"=="" local d .
-    if "`spread2'"!="" local spread2 = 100/`spread2'
+    else if "`stack'`stack2'"!="" {
+        if "`unique'"!="" {
+            di as err "rag(): stack() and unique not both allowed"
+            exit 198
+        }
+        local stack `stack2'
+        if "`stack'"=="" local stack .
+    }
+    // spread
     if      "`boutsides'"!="" local outsides b
     else if "`outsides'"!=""  local outsides w
     c_local rag_offset   `offset'
     c_local rag_unique   `unique'
-    c_local rag_spread   `s'
-    c_local rag_spread_d `d'
+    c_local rag_spread   `spread'
+    c_local rag_spread2  `spread2'
+    c_local rag_stack    `stack'
     c_local rag_left     `left'
     c_local rag_right    `right'
     c_local rag_outsides `outsides'
@@ -1835,10 +1855,78 @@ void _over_sort(real rowvector ab)
     st_local("overlbls", invtokens(lbls'))
 }
 
+void _rag_stack(real scalar a0, real scalar b0, real scalar d, real scalar dir)
+{
+    real scalar    j, a, b, r, dtmp
+    real scalar    xrag, rpos, spid, dlo, dup
+    real colvector DIR, D
+    real matrix    idx
+    
+    xrag = st_varindex(st_local("xrag"))
+    rpos = st_varindex(st_local("RPOS"))
+    spid = st_varindex(st_local("splitid"))
+    dlo  = st_varindex(st_local("dlo"))
+    dup  = st_varindex(st_local("dup"))
+    idx  = _ipolate_PDF_index(a0, b0)
+    D    = J(b0-a0+1,1,.)
+    dtmp = .
+    for (j=rows(idx);j;j--) {
+        a = idx[j,1]; b = idx[j,2]
+        if (d>=.) {
+            r = max(abs(st_data((a,b), dup)-st_data((a,b), dlo)))
+            if (dir) r = r / 2 // one-sided rag
+        }
+        if (dir) DIR = (-1):^(st_data((a,b), spid):!=1) * dir
+        else     DIR = J(0,1,.)
+        D[|a-a0+1 \ b-a0+1|] = _rag_stack_offset(st_data((a,b), xrag), DIR, r) 
+        dtmp = min((dtmp,r))
+    }
+    if (d>=.) {
+        if (dtmp>=.) dtmp = 0
+        printf("{txt}(stacked rag: step size set to %g)\n", dtmp)
+    }
+    else dtmp = d
+    st_store((a0,b0), rpos, st_data((a0,b0), rpos) + D * dtmp)
+}
+
+real _rag_stack_offset(real colvector X, real colvector dir, real scalar r)
+{   // assumes X and dir fleeting; modifies r
+    real scalar    j, n, a, b, hasdir, nmax
+    real colvector p, L
+    
+    real colvector x
+    
+    hasdir = rows(dir)!=0
+    // sort data
+    p = order(X,1)
+    _collate(X, p)
+    if (hasdir) _collate(dir, p)
+    // identify groups
+    L = 0 \ selectindex(_mm_unique_tag(X, 1))
+    // generate offsets
+    nmax = 0
+    j = rows(L)
+    a = L[j--] + 1
+    while (j) {
+        b = a - 1
+        a = L[j--] + 1
+        if (X[a]>=.) continue // skip missings
+        n = b - a + 1
+        nmax = max((nmax, n))
+        if (hasdir) X[|a\b|] = (0::n-1) :* dir[|a\b|]
+        else        X[|a\b|] = (0::n-1) :- (n-1)/2
+        // note: X:*0 is added so that result will be missing if X is missing
+    }
+    // determine step size based on r (max density) and nmax
+    if (r<.) r = r / nmax
+    // return offsets
+    return(X[invorder(p)])
+}
+
 void _ipolate_PDF_rag(real scalar a0, real scalar b0, real scalar d)
 {
-    real scalar    j, dlo, dup, at, xrag, drag, a, b
-    real matrix    idx
+    real scalar j, dlo, dup, at, xrag, drag, a, b
+    real matrix idx
     
     dlo  = st_varindex(st_local("dlo"))
     dup  = st_varindex(st_local("dup"))

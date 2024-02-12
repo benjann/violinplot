@@ -81,9 +81,17 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 10](/images/11.png)
 
+    sysuse auto, clear
+    violinplot mpg turn, left rag(stack right msymbol(o) offset(-.05))
+
+![example 10](/images/12.png)
+
 ---
 
 Main changes:
+
+    12feb2024 (1.1.5)
+    - rag() now has suboption -stack- that can be used to produce raindrop plots
 
     10feb2024 (1.1.3)
     - second argument in rag(spread()) now allowed to use a fixed value for the
