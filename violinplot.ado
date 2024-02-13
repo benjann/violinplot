@@ -1,4 +1,4 @@
-*! version 1.1.5  12feb2024  Ben Jann
+*! version 1.1.6  13feb2024  Ben Jann
 
 program violinplot
     version 15
@@ -490,7 +490,11 @@ program violinplot
     // prepare tempvars
     local ids  byid overid splitid grpid varid
     local vres pos avg med blo bup wlo wup dup dlo at
-    if "`rag'"!="" local vres `vres' xrag
+    if "`rag'"!="" {
+        local vres `vres' xrag
+        if "`weight'"=="" & "`rag_unique'"=="" local rag_noweight noweight
+        if "`rag_noweight'"=="" local vres `vres' wrag wvar
+    }
     tempvar tag `ids' `vres'
     qui gen byte `tag' = . // tag start of new result
     foreach v of local ids {
@@ -502,6 +506,11 @@ program violinplot
     tempvar TOUSE
     if "`by'`over'`split'"!="" {
         qui gen byte `TOUSE' = .
+    }
+    if "`wvar'"!="" {
+        if "`weight'"!="" qui replace `wvar' `exp'
+        else              qui replace `wvar' = 1
+        local ragwgt [aw=`wrag']
     }
     
     // fill in byid for existing observations so that addplot() will
@@ -574,7 +583,8 @@ program violinplot
                         // rag: copy data
                         if "`rag'"!="" {
                             mata: _copyrag(`a', `b', "`rag_outsides'", /*
-                                */ "`rag_unique'"!="")
+                                */ "`rag_unique'"!="", "`absolute'"!="",/*
+                                */ "`wvar'")
                         }
                         // ids
                         qui replace `tag'     = 1   in `a'
@@ -672,7 +682,7 @@ program violinplot
         forv j = 1/`k_`By'' {
             forv c = 1/`k_`CLUS'' {
                 forv i = 1/`k_`PLOT'' {
-                    _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
+                    _dscale `dup' `dlo' `pos' `wrag' if ``By'id'==`j' & /*
                         */ ``CLUS'id'==`c' & ``PLOT'id'==`i' `in'/*
                         */, dscale(`dscale')
                 }
@@ -682,7 +692,7 @@ program violinplot
     else if "`dstype'"=="plot" {
         forv j = 1/`k_`By'' {
             forv i = 1/`k_`PLOT'' {
-                _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
+                _dscale `dup' `dlo' `pos' `wrag' if ``By'id'==`j' & /*
                     */ ``PLOT'id'==`i' `in', dscale(`dscale')
             }
         }
@@ -690,18 +700,26 @@ program violinplot
     else if "`dstype'"=="group" {
         forv j = 1/`k_`By'' {
             forv c = 1/`k_`CLUS'' {
-                _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
+                _dscale `dup' `dlo' `pos' `wrag' if ``By'id'==`j' & /*
                     */ ``CLUS'id'==`c' `in', dscale(`dscale')
             }
         }
     }
     else if "`dstype'"=="subgraph" {
         forv j = 1/`k_`By'' {
-            _dscale `dup' `dlo' `pos' if ``By'id'==`j' `in', dscale(`dscale')
+            _dscale `dup' `dlo' `pos' `wrag' if ``By'id'==`j' `in',/*
+                */ dscale(`dscale')
         }
     }
     else {
-        _dscale `dup' `dlo' `pos' `in', dscale(`dscale')
+        _dscale `dup' `dlo' `pos' `wrag' `in', dscale(`dscale')
+    }
+    
+    // update max weight for weighted rag (so that marker sizes are consistent
+    // across plots)
+    if "`wrag'"!="" {
+        su `wrag' if `xrag'>=. & `wrag'<. `in', meanonly
+        qui replace `wrag' = r(max) if `xrag'>=. & `wrag'<. `in'
     }
     
     // add offsets
@@ -1180,7 +1198,7 @@ program violinplot
             local popts `axes' pstyle(p`p') `p_`i'' `msopts' `colr'/*
                 */ `rag2' `p_`i'rag'
             local prag `prag'/*
-                */ (scatter `vlist' if ``PID'id'==`i', `popts')
+                */ (scatter `vlist' `ragwgt' if ``PID'id'==`i', `popts')
         }
     }
     
@@ -1508,7 +1526,7 @@ program _parse_count_stats
 end
 
 program _parse_rag
-    syntax [, OFFset(numlist) Unique/*
+    syntax [, OFFset(numlist) Unique noWeight/*
         */ SPread SPread2(numlist max=2 missingokay)/*
         */ STack STack2(str)/*
         */ Left Right/*
@@ -1561,6 +1579,7 @@ program _parse_rag
     else if "`outsides'"!=""  local outsides w
     c_local rag_offset   `offset'
     c_local rag_unique   `unique'
+    c_local rag_noweight `weight'
     c_local rag_spread   `spread'
     c_local rag_spread2  `spread2'
     c_local rag_stack    `stack'
@@ -1794,15 +1813,22 @@ end
 
 program _dscale
     syntax varlist [if] [in], dscale(str)
-    gettoken dup dlo : varlist
-    gettoken dlo pos : dlo
-    gettoken pos     : pos
+    gettoken dup  dlo  : varlist
+    gettoken dlo  pos  : dlo
+    gettoken pos  wrag : pos
+    gettoken wrag      : wrag
     if `dscale'<. {
         su `dup' `if', meanonly
-        local scale "*`dscale'/r(max)"
+        local scale = `dscale' / r(max)
+        if `scale'<. {
+            qui replace `dup' = `dup' * `scale' `if' `in'
+            if "`wrag'"!="" {
+                qui replace `wrag' = `wrag' * `scale' `if' `in'
+            }
+        }
     }
-    qui replace `dup' = `dup'`scale' + `pos' `if' `in'
-    qui replace `dlo' = 2*`pos' - `dup'      `if' `in'
+    qui replace `dup' = `dup'   + `pos' `if' `in'
+    qui replace `dlo' = 2*`pos' - `dup' `if' `in'
 end
 
 program _get_split_offset
@@ -1817,17 +1843,30 @@ version 15
 mata:
 mata set matastrict on
 
-void _copyrag(real scalar a, real scalar b, string scalar out, real scalar uniq)
+void _copyrag(real scalar a, real scalar b, string scalar out,
+    real scalar uniq, real scalar abs, string scalar wvar)
 {
-    real scalar    n
-    real colvector x
+    real scalar    n, wmax, wrag
+    real colvector x, w, p
     
     // get data
     x = st_data(., st_local("xvar"), st_local("tousej"))
-    x = select(x, x:<.)
-    if (uniq) x = mm_unique(x)
-    if (out!="") x = select(x,
-        x:<st_numscalar("r("+out+"lo)") :| x:>st_numscalar("r("+out+"up)"))
+    x = x[p = selectindex(x:<.)]
+    if (wvar!="") w = st_data(., wvar, st_local("tousej"))[p]
+    if (uniq) {
+        if (wvar!="") _copyrag_unique(x, w)
+        else          x = mm_unique(x)
+    }
+    if (wvar!="") {
+        if (!abs) w = w / sum(w) // normalize
+        wmax = max(w)
+    }
+    if (out!="") {
+        p = selectindex(x:<st_numscalar("r("+out+"lo)") :|
+                        x:>st_numscalar("r("+out+"up)"))
+        x = x[p]
+        if (wvar!="") w = w[p]
+    }
     if (!length(x)) return // nothing to store
     // store data
     n = rows(x)
@@ -1843,6 +1882,30 @@ void _copyrag(real scalar a, real scalar b, string scalar out, real scalar uniq)
         }
     }
     st_store((a, a + n - 1), st_local("xrag"), x)
+    if (wvar!="") {
+        wrag = st_varindex(st_local("wrag"))
+        st_store((a, a + n - 1), wrag, w)
+        st_store(b, wrag, wmax) // store max in last obs
+    }
+}
+
+void _copyrag_unique(real colvector x, real colvector w)
+{
+    real scalar    i, a, b
+    real colvector p
+    
+    p = order(x,1)
+    _collate(x, p)
+    _collate(w, p)
+    p = selectindex(_mm_unique_tag(x))
+    a = rows(x) + 1
+    for (i = rows(p);i;i--) {
+        b = a - 1
+        a = p[i]
+        w[a] = sum(w[|a \ b|])
+    }
+    x = x[p]
+    w = w[p]
 }
 
 void _over_sort(real rowvector ab)
@@ -1872,14 +1935,15 @@ void _over_sort(real rowvector ab)
 void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
     real scalar val, real scalar dir)
 {
-    real scalar    j, a, b, d, n
-    real scalar    xrag, rpos, spid
-    real colvector DIR, D
+    real scalar    j, a, b, d, n, DIR
+    real scalar    xrag, rpos, spid, wrag
+    real colvector D, W
     real matrix    idx
     
     xrag = st_varindex(st_local("xrag"))
     rpos = st_varindex(st_local("RPOS"))
     spid = st_varindex(st_local("splitid"))
+    if (st_local("wrag")!="") wrag = st_varindex(st_local("wrag"))
     if (typ!=1) {
         d = max(abs(st_data((a0,b0), st_local("dup")) - 
                     st_data((a0,b0), st_local("dlo"))))
@@ -1890,9 +1954,12 @@ void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
     D    = J(b0-a0+1,1,.)
     for (j=rows(idx);j;j--) {
         a = idx[j,1]; b = idx[j,2]
-        if (dir) DIR = (-1):^(st_data((a,b), spid):!=1) * dir
-        else     DIR = J(0,1,.)
-        D[|a-a0+1 \ b-a0+1|] = _rag_stack_offset(st_data((a,b), xrag), DIR, n)
+        if (dir) DIR = (-1)^(_st_data(a, spid)!=1) * dir
+        else     DIR = .
+        W = 1
+        if (wrag<.) st_view(W, (a,b), wrag)
+        D[|a-a0+1 \ b-a0+1|] = _rag_stack_offset(st_data((a,b), xrag),
+            W, DIR, n)
     }
     if (typ!=1) {
         d = d / (n - 1) * .8
@@ -1908,16 +1975,17 @@ void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
     st_store((a0,b0), rpos, st_data((a0,b0), rpos) + D * d)
 }
 
-real _rag_stack_offset(real colvector X, real colvector dir, real scalar nmax)
-{   // assumes X and dir fleeting; updates nmax
-    real scalar    j, n, a, b, hasdir
-    real colvector p, L
+real _rag_stack_offset(real colvector X, real colvector W0,
+    real scalar dir, real scalar nmax)
+{   // assumes X and dir fleeting; updates w and nmax
+    real scalar    j, n, a, b
+    real colvector p, L, W, w
     
     // sort data
     p = order(X,1)
     _collate(X, p)
-    hasdir = rows(dir)!=0
-    if (hasdir) _collate(dir, p)
+    if (W0!=1) W = W0[p]
+    else       W = 1
     // identify groups
     L = 0 \ selectindex(_mm_unique_tag(X, 1))
     // generate offsets
@@ -1929,9 +1997,24 @@ real _rag_stack_offset(real colvector X, real colvector dir, real scalar nmax)
         if (X[a]>=.) continue // skip missings
         n = b - a + 1
         nmax = max((nmax, n))
-        if (hasdir) X[|a\b|] = (0::n-1) :* dir[|a\b|]
-        else        X[|a\b|] = (0::n-1) :- (n-1)/2
+        if (dir<.) {
+            if (W!=1) W[|a\b|] = sort(W[|a\b|],-1)
+            X[|a\b|] = (0::n-1) * dir
+        }
+        else {
+            if (W!=1) {
+                w = sort(W[|a\b|],-1)
+                if (n>1) { // move large weights to middle
+                    if (mod(n,2)) w = w[range(n,1,-2)]   \ w[mm_seq(2,n-1,2)]
+                    else          w = w[range(n-1,1,-2)] \ w[mm_seq(2,n,2)]
+                }
+                W[|a\b|] = w
+            }
+            X[|a\b|] = (0::n-1) :- (n-1)/2
+        }
     }
+    // store reordered weights (W0 is a view)
+    if (W!=1) W0[.] = W[invorder(p)]
     // return offsets
     return(X[invorder(p)])
 }

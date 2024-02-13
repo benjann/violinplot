@@ -1,5 +1,5 @@
 {smcl}
-{* 12feb2024}{...}
+{* 13feb2024}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -618,8 +618,19 @@
     (upper) limit of the box. {cmd:boutsides} implies {cmd:outsides}.
 
 {phang2}
-    {opt u:nique} omits markers for repeated data points. Use this option to
-    reduce graph size in larger datasets.
+    {opt u:nique} omits markers for repeated data points and makes marker sizes
+    proportional to the number (or sum of weights) of represented points
+    (unless {cmd:noweight} is specified).
+
+{phang2}
+    {opt now:eight} causes the same size to be used for all markers even if weights have been
+    applied or if points have been collapsed by {cmd:unique}. By default, if
+    weights are applied or if {cmd:unique} is specified, the size of each marker
+    will be proportional to the data mass represented by the marker. Note that
+    the scaling of markers will be determined in a way such that it is consistent
+    with the scalings applied to the density estimates if multiple results
+    are included in the same graph. Specify {opt noweight} if you want to
+    ignore the weights and use the same size for each marker in any case.
 
 {phang2}
     {opth off:set(numlist)} shifts the position of the rag(s) by the specified

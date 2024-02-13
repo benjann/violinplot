@@ -90,6 +90,14 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    13feb2024 (1.1.6)
+    - markers in rag() will now be scaled by the weights if weights have been
+      specified; likewise, if suboption -unique- is specified, the markers of the
+      rag will be scaled by the number of collapsed observations (or sum of
+      weights); across results, the scaling of markers will be determined in a
+      way such that it is consistent with the scaling applied to the density
+      estimates; specify rag(noweight) to omit the scaling of markers
+
     12feb2024 (1.1.5)
     - rag() now has suboption stack() that can be used to produce raindrop plots
 
