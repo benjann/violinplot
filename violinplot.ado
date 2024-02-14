@@ -1,4 +1,4 @@
-*! version 1.1.6  13feb2024  Ben Jann
+*! version 1.1.7  14feb2024  Ben Jann
 
 program violinplot
     version 15
@@ -488,15 +488,15 @@ program violinplot
     }
     
     // prepare tempvars
-    local ids  byid overid splitid grpid varid
+    local ids  tag byid overid splitid grpid varid
     local vres pos avg med blo bup wlo wup dup dlo at
     if "`rag'"!="" {
+        local ids `ids' rtag
         local vres `vres' xrag
         if "`weight'"=="" & "`rag_unique'"=="" local rag_noweight noweight
         if "`rag_noweight'"=="" local vres `vres' wrag wvar
     }
-    tempvar tag `ids' `vres'
-    qui gen byte `tag' = . // tag start of new result
+    tempvar `ids' `vres'
     foreach v of local ids {
         qui gen byte ``v'' = .
     }
@@ -577,17 +577,19 @@ program violinplot
                             mata: st_store((`a',`b'-1), "`at'", ///
                                 st_matrix("e(at)")')
                         }
+                        // tag start and end of density estimate
+                        qui replace `tag' = 1 in `a' // first row
+                        qui replace `tag' = 2 in `b' // last row (missing)
                         // stats
                         Fit_stats `"`stats'"' "`xvar'" `"`wgt'"' `"`iff'"' `a'/*
                             */ `avg' `med' `blo' `bup' `wlo' `wup' `"`qdef'"'
                         // rag: copy data
                         if "`rag'"!="" {
+                            qui replace `rtag' = 1 in `a' // first row
                             mata: _copyrag(`a', `b', "`rag_outsides'", /*
-                                */ "`rag_unique'"!="", "`absolute'"!="",/*
-                                */ "`wvar'")
+                                */ "`rag_unique'"!="",  "`wvar'")
                         }
                         // ids
-                        qui replace `tag'     = 1   in `a'
                         qui replace `varid'   = `i' in `a'/`b'
                         qui replace `grpid'   = `g' in `a'/`b'
                         qui replace `splitid' = `s' in `a'/`b'
@@ -606,7 +608,7 @@ program violinplot
     // sort results
     if "`over_sort'"!="" {
         tempname sorttag
-        qui gen byte `sorttag' = `tag'<. & `varid'==`over_sort2'/*
+        qui gen byte `sorttag' = `tag'==1 & `varid'==`over_sort2'/*
             */ & `grpid'==1 & `byid'==1 in `=`r0'+1'/`r1'
         mata: _over_sort((`r0'+1, `r1'))
     }
@@ -682,7 +684,7 @@ program violinplot
         forv j = 1/`k_`By'' {
             forv c = 1/`k_`CLUS'' {
                 forv i = 1/`k_`PLOT'' {
-                    _dscale `dup' `dlo' `pos' `wrag' if ``By'id'==`j' & /*
+                    _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
                         */ ``CLUS'id'==`c' & ``PLOT'id'==`i' `in'/*
                         */, dscale(`dscale')
                 }
@@ -692,7 +694,7 @@ program violinplot
     else if "`dstype'"=="plot" {
         forv j = 1/`k_`By'' {
             forv i = 1/`k_`PLOT'' {
-                _dscale `dup' `dlo' `pos' `wrag' if ``By'id'==`j' & /*
+                _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
                     */ ``PLOT'id'==`i' `in', dscale(`dscale')
             }
         }
@@ -700,26 +702,19 @@ program violinplot
     else if "`dstype'"=="group" {
         forv j = 1/`k_`By'' {
             forv c = 1/`k_`CLUS'' {
-                _dscale `dup' `dlo' `pos' `wrag' if ``By'id'==`j' & /*
+                _dscale `dup' `dlo' `pos' if ``By'id'==`j' & /*
                     */ ``CLUS'id'==`c' `in', dscale(`dscale')
             }
         }
     }
     else if "`dstype'"=="subgraph" {
         forv j = 1/`k_`By'' {
-            _dscale `dup' `dlo' `pos' `wrag' if ``By'id'==`j' `in',/*
+            _dscale `dup' `dlo' `pos' if ``By'id'==`j' `in',/*
                 */ dscale(`dscale')
         }
     }
     else {
-        _dscale `dup' `dlo' `pos' `wrag' `in', dscale(`dscale')
-    }
-    
-    // update max weight for weighted rag (so that marker sizes are consistent
-    // across plots)
-    if "`wrag'"!="" {
-        su `wrag' if `xrag'>=. & `wrag'<. `in', meanonly
-        qui replace `wrag' = r(max) if `xrag'>=. & `wrag'<. `in'
+        _dscale `dup' `dlo' `pos' `in', dscale(`dscale')
     }
     
     // add offsets
@@ -790,7 +785,7 @@ program violinplot
         if "`rag_spread'"!="" {
             tempvar drag
             qui gen double `drag' = .
-            mata: _ipolate_PDF_rag(`r0'+1, `r1', `rag_spread2')
+            mata: _rag_ipolate_PDF(`r0'+1, `r1', `rag_spread2')
             if `rag_dir' {
                 qui replace `RPOS' = `RPOS' +/*
                     */ abs(rbeta(`rag_spread', `rag_spread')-.5)*`drag'/*
@@ -863,7 +858,6 @@ program violinplot
             local preserve
             tempvar dupl
             qui expand 2 if `touse'==1, generate(`dupl')
-            fre `dupl'
             qui replace `byid' = `k_by' if `dupl'==1
         }
     }
@@ -1813,19 +1807,12 @@ end
 
 program _dscale
     syntax varlist [if] [in], dscale(str)
-    gettoken dup  dlo  : varlist
-    gettoken dlo  pos  : dlo
-    gettoken pos  wrag : pos
-    gettoken wrag      : wrag
+    gettoken dup dlo : varlist
+    gettoken dlo pos : dlo
+    gettoken pos     : pos
     if `dscale'<. {
         su `dup' `if', meanonly
-        local scale = `dscale' / r(max)
-        if `scale'<. {
-            qui replace `dup' = `dup' * `scale' `if' `in'
-            if "`wrag'"!="" {
-                qui replace `wrag' = `wrag' * `scale' `if' `in'
-            }
-        }
+        qui replace `dup' = `dup' * (`dscale' / r(max)) `if' `in'
     }
     qui replace `dup' = `dup'   + `pos' `if' `in'
     qui replace `dlo' = 2*`pos' - `dup' `if' `in'
@@ -1844,22 +1831,21 @@ mata:
 mata set matastrict on
 
 void _copyrag(real scalar a, real scalar b, string scalar out,
-    real scalar uniq, real scalar abs, string scalar wvar)
+    real scalar uniq, string scalar wvar)
 {
-    real scalar    n, wmax, wrag
+    real scalar    n, wmean, wrag
     real colvector x, w, p
     
     // get data
     x = st_data(., st_local("xvar"), st_local("tousej"))
     x = x[p = selectindex(x:<.)]
-    if (wvar!="") w = st_data(., wvar, st_local("tousej"))[p]
+    if (wvar!="") {
+        w = abs(st_data(., wvar, st_local("tousej"))[p])
+        wmean = mean(w)
+    }
     if (uniq) {
         if (wvar!="") _copyrag_unique(x, w)
         else          x = mm_unique(x)
-    }
-    if (wvar!="") {
-        if (!abs) w = w / sum(w) // normalize
-        wmax = max(w)
     }
     if (out!="") {
         p = selectindex(x:<st_numscalar("r("+out+"lo)") :|
@@ -1870,9 +1856,9 @@ void _copyrag(real scalar a, real scalar b, string scalar out,
     if (!length(x)) return // nothing to store
     // store data
     n = rows(x)
-    if ((a+n)>b) {
+    if ((a+n+1)>b) {
         // update range and add observations if necessary
-        b = a + n
+        b = a + n+1
         st_local("b", strofreal(b))
         if (b>st_nobs()) {
             stata(st_local("preserve"))
@@ -1881,11 +1867,19 @@ void _copyrag(real scalar a, real scalar b, string scalar out,
                 st_local("tousej"))
         }
     }
-    st_store((a, a + n - 1), st_local("xrag"), x)
+    st_store((a, a+n-1), st_local("xrag"), x)
+    _st_store(a+n+1, st_varindex(st_local("rtag")), 2) // tag last row
     if (wvar!="") {
         wrag = st_varindex(st_local("wrag"))
-        st_store((a, a + n - 1), wrag, w)
-        st_store(b, wrag, wmax) // store max in last obs
+        st_store((a, a+n-1), wrag, w)
+        /* including mean(w) and mean(w)*100 among the weights ensures that the
+           average weight corresponds to the default (unweighted) marker size
+           (unless the maximum weight is larger than 100 times the average);
+           inclusion of mean(w) is needed because options unique and
+           [b]outsides may lead to a situation in which all remaining weights
+           are larger than mean(w) */
+        _st_store(a+n, wrag, wmean)
+        _st_store(a+n+1, wrag, wmean*100) 
     }
 }
 
@@ -1950,8 +1944,8 @@ void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
         if (dir) d = d / 2
         n = 5
     }
-    idx  = _ipolate_PDF_index(a0, b0)
-    D    = J(b0-a0+1,1,.)
+    idx = _get_index(a0, b0, "rtag", 2)
+    D   = J(b0-a0+1,1,.)
     for (j=rows(idx);j;j--) {
         a = idx[j,1]; b = idx[j,2]
         if (dir) DIR = (-1)^(_st_data(a, spid)!=1) * dir
@@ -1994,7 +1988,6 @@ real _rag_stack_offset(real colvector X, real colvector W0,
     while (j) {
         b = a - 1
         a = L[j--] + 1
-        if (X[a]>=.) continue // skip missings
         n = b - a + 1
         nmax = max((nmax, n))
         if (dir<.) {
@@ -2019,28 +2012,29 @@ real _rag_stack_offset(real colvector X, real colvector W0,
     return(X[invorder(p)])
 }
 
-void _ipolate_PDF_rag(real scalar a0, real scalar b0, real scalar d)
+void _rag_ipolate_PDF(real scalar a0, real scalar b0, real scalar d)
 {
-    real scalar j, dlo, dup, at, xrag, drag, a, b
-    real matrix idx
+    real scalar j, dlo, dup, at, xrag, drag
+    real matrix idx, pdf
     
+    xrag = st_varindex(st_local("xrag"))
+    drag = st_varindex(st_local("drag"))
+    idx  = _get_index(a0, b0, "rtag", 2)
+    if (d<.) { // fixed value specified by user; do not use PDF
+        for (j=rows(idx);j;j--) {
+            st_store(idx[j,], drag, J(idx[j,2]-idx[j,1]+1, 1, d))
+        }
+    }
     dlo  = st_varindex(st_local("dlo"))
     dup  = st_varindex(st_local("dup"))
     at   = st_varindex(st_local("at"))
-    xrag = st_varindex(st_local("xrag"))
-    drag = st_varindex(st_local("drag"))
-    idx  = _ipolate_PDF_index(a0, b0)
+    pdf = _get_index(a0, b0, "tag", 1)
     for (j=rows(idx);j;j--) {
-        a = idx[j,1]; b = idx[j,2]
-        if (d<.) { // fixed value specified by user
-            st_store((a,b), drag, J(b-a+1, 1, d))
-            continue
-        }
-        st_store((a,b), drag,
+        st_store(idx[j,], drag,
             editmissing(
-                mm_ipolate(st_data((a,b), at),
-                           st_data((a,b), dup)-st_data((a,b), dlo),
-                           st_data((a,b), xrag))
+                mm_ipolate(st_data(pdf[j,], at),
+                           st_data(pdf[j,], dup)-st_data(pdf[j,], dlo),
+                           st_data(idx[j,], xrag))
             , 0))
     }
 }
@@ -2071,7 +2065,7 @@ void _ipolate_PDF(real scalar a, real scalar b)
             st_local("avg_dlo"), st_local("avg_dup")))
     }
     // get index of results
-    idx = _ipolate_PDF_index(a, b)
+    idx = _get_index(a, b, "tag", 1)
     // compute
     for (j=rows(idx);j;j--) {
         if (idx[j,2]<=idx[j,1]) continue // must have at least two obs
@@ -2079,19 +2073,6 @@ void _ipolate_PDF(real scalar a, real scalar b)
         if (length(med)) _ipolate_PDF_line(idx[j,1], idx[j,2], d, med)
         if (length(avg)) _ipolate_PDF_line(idx[j,1], idx[j,2], d, avg)
     }
-}
-
-real matrix _ipolate_PDF_index(real scalar a, real scalar b)
-{
-    real scalar    r
-    real colvector idx
-    
-    // start of result
-    idx = (a-1) :+ selectindex(st_data((a,b), st_local("tag")):<.)
-    // end of result (assuming one empty row between results)
-    r = rows(idx)
-    if (r>1) return((idx, (idx[|2 \ r|]:-2 \ b-1)))
-    return((idx, b-1)) 
 }
 
 void _ipolate_PDF_box(real scalar a, real scalar b, real rowvector did,
@@ -2133,6 +2114,16 @@ void _ipolate_PDF_line(real scalar a, real scalar b, real rowvector did,
         _st_data(a, lid[1]))
     _st_store(a, lid[3], d)
     _st_store(a, lid[2], 2*_st_data(a, did[3]) - d)
+}
+
+real matrix _get_index(real scalar a, real scalar b, string scalar tag,
+    real scalar offset) // returns indices of start and end of each result
+{
+    real scalar t
+    
+    t = st_varindex(st_local(tag))
+    return((a-1) :+ (selectindex(st_data((a,b), t):==1),
+                     selectindex(st_data((a,b), t):==2) :- offset))
 }
 
 void _lswap(string scalar a, string scalar b)

@@ -90,6 +90,12 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    14feb2024 (1.1.7)
+    - revised the computation of weighted markers in the rag; the sizes are now
+      determined in a way such that average weight typically corresponds to the
+      default (unweighted) marker size
+    - reorganized some code and fixed some minor issues
+
     13feb2024 (1.1.6)
     - markers in rag() will now be scaled by the weights if weights have been
       specified; likewise, if suboption -unique- is specified, the markers of the

@@ -1,5 +1,5 @@
 {smcl}
-{* 13feb2024}{...}
+{* 14feb2024}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -618,19 +618,20 @@
     (upper) limit of the box. {cmd:boutsides} implies {cmd:outsides}.
 
 {phang2}
-    {opt u:nique} omits markers for repeated data points and makes marker sizes
-    proportional to the number (or sum of weights) of represented points
-    (unless {cmd:noweight} is specified).
+    {opt u:nique} omits markers for repeated data points and, unless
+    {cmd:noweight} is specified, scales marker sizes in proportion to the
+    number (or sum of weights) of represented observations.
 
 {phang2}
-    {opt now:eight} causes the same size to be used for all markers even if weights have been
+    {opt now:eight} uses the same size for all markers even if weights have been
     applied or if points have been collapsed by {cmd:unique}. By default, if
-    weights are applied or if {cmd:unique} is specified, the size of each marker
-    will be proportional to the data mass represented by the marker. Note that
-    the scaling of markers will be determined in a way such that it is consistent
-    with the scalings applied to the density estimates if multiple results
-    are included in the same graph. Specify {opt noweight} if you want to
-    ignore the weights and use the same size for each marker in any case.
+    weights are applied or if {cmd:unique} is specified, marker sizes (in terms
+    of covered area) are scaled in proportion to the represented data mass. The scaling
+    will be such that the average weight (within
+    observations used to compute a specific result) corresponds to the default
+    (unweighted) marker size (unless the largest weight exceeds 100 times the
+    average, in which case the average-weight marker size will decrease). Specify
+    {opt noweight} if you want to use the same size for each marker.
 
 {phang2}
     {opth off:set(numlist)} shifts the position of the rag(s) by the specified
@@ -663,7 +664,7 @@
 {phang2}
     {opt st:ack}[{cmd:(}[{cmd:*}]{it:#}{cmd:)}] prints stacks of markers at the unique
     values of the data. Use this option to create raindrop plots. Argument
-    {it:#} sets the step size between markers within stacks. An appropriate value for the step
+    {it:#} sets the step size between markers within stacks. A suitable value for the step
     size is determined from the data if {it:#} is omitted or set to missing. Type
     {cmd:*}{it:#} to multiply the default step size by {it:#}. Only
     one of {cmd:stack()} and {cmd:spread()} is allowed.
