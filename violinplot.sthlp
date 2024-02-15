@@ -647,7 +647,8 @@
     to the density estimate at that level (such that the rag mimics the shape of the
     violin). Argument {it:#1} in [0.001, 100] sets the degree of
     spreading; {it:#1}=100 (maximum spreading) is equivalent to using
-    a uniform error distribution; the default is {it:#1}=1 (moderate spreading).
+    a uniform error distribution; the default is {it:#1}=1
+    (moderate spreading).
 
 {pmore2}
     Optional argument {it:#2} sets the width of the spread to a fixed value

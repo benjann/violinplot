@@ -1,4 +1,4 @@
-*! version 1.1.7  14feb2024  Ben Jann
+*! version 1.1.8  15feb2024  Ben Jann
 
 program violinplot
     version 15
@@ -781,23 +781,14 @@ program violinplot
                 if      "`rag_left'"!="" & "`vertical'"!=""  local rag_dir -1
                 else if "`rag_right'"!="" & "`vertical'"=="" local rag_dir -1
             }
-        }
-        if "`rag_spread'"!="" {
-            tempvar drag
-            qui gen double `drag' = .
-            mata: _rag_ipolate_PDF(`r0'+1, `r1', `rag_spread2')
-            if `rag_dir' {
-                qui replace `RPOS' = `RPOS' +/*
-                    */ abs(rbeta(`rag_spread', `rag_spread')-.5)*`drag'/*
-                    */ * cond(`splitid'==1,`rag_dir',0-`rag_dir') `in'
+            if "`rag_spread'"!="" {
+                mata: _rag_pread(`r0'+1, `r1', `rag_spread', `rag_spread2',/*
+                    */ `rag_dir')
             }
             else {
-                qui replace `RPOS' = `RPOS' +/*
-                    */ (rbeta(`rag_spread', `rag_spread')-.5)*`drag' `in'
+                mata: _rag_stack(`r0'+1, `r1', `rag_stack', `rag_stack2',/*
+                    */ `rag_dir')
             }
-        }
-        else if "`rag_stack'"!="" {
-            mata: _rag_stack(`r0'+1, `r1', `rag_stack', `rag_stack2', `rag_dir')
         }
     }
     
@@ -1928,10 +1919,12 @@ void _over_sort(real rowvector ab)
 
 void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
     real scalar val, real scalar dir)
-{
-    real scalar    j, a, b, d, n, DIR
+{   // typ=1: val contains fixed step size
+    // typ=2: val contains factor; scale automatic step size by val
+    // typ=0: val is missing; use automatic step size
+    real scalar    j, d, n, sgn
     real scalar    xrag, rpos, spid, wrag
-    real colvector D, W
+    real colvector D, X, W, p
     real matrix    idx
     
     xrag = st_varindex(st_local("xrag"))
@@ -1940,20 +1933,23 @@ void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
     if (st_local("wrag")!="") wrag = st_varindex(st_local("wrag"))
     if (typ!=1) {
         d = max(abs(st_data((a0,b0), st_local("dup")) - 
-                    st_data((a0,b0), st_local("dlo"))))
-        if (dir) d = d / 2
+                    st_data((a0,b0), st_local("dlo")))) / 2
         n = 5
     }
     idx = _get_index(a0, b0, "rtag", 2)
     D   = J(b0-a0+1,1,.)
     for (j=rows(idx);j;j--) {
-        a = idx[j,1]; b = idx[j,2]
-        if (dir) DIR = (-1)^(_st_data(a, spid)!=1) * dir
-        else     DIR = .
-        W = 1
-        if (wrag<.) st_view(W, (a,b), wrag)
-        D[|a-a0+1 \ b-a0+1|] = _rag_stack_offset(st_data((a,b), xrag),
-            W, DIR, n)
+        if (dir) sgn = (-1)^(_st_data(idx[j,1], spid)!=1) * dir
+        else     sgn = 0
+        st_view(X=., idx[j,], xrag)
+        if (wrag<.) {
+            // reorder data so that large dots will be at the back
+            st_view(W=., idx[j,], wrag)
+            p = order(W,-1)
+            W[.] = W[p]
+            X[.] = X[p]
+        }
+        D[|idx[j,]':+(1-a0)|] = _rag_stack_offset(X, sgn, n)
     }
     if (typ!=1) {
         d = d / (n - 1) * .8
@@ -1969,73 +1965,80 @@ void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
     st_store((a0,b0), rpos, st_data((a0,b0), rpos) + D * d)
 }
 
-real _rag_stack_offset(real colvector X, real colvector W0,
-    real scalar dir, real scalar nmax)
-{   // assumes X and dir fleeting; updates w and nmax
+real _rag_stack_offset(real colvector X, real scalar sgn, real scalar nmax)
+{   // updates nmax
     real scalar    j, n, a, b
-    real colvector p, L, W, w
-    
-    // sort data
-    p = order(X,1)
-    _collate(X, p)
-    if (W0!=1) W = W0[p]
-    else       W = 1
-    // identify groups
-    L = 0 \ selectindex(_mm_unique_tag(X, 1))
+    real colvector L, d, D, p
+
+    // sort order
+    p = order((X,(1::rows(X))), (1,2))
+    // identify groups (X is sorted)
+    L = 0 \ selectindex(_mm_unique_tag(X[p], 1))
     // generate offsets
     j = rows(L)
+    D = J(L[j],1,.)
     a = L[j--] + 1
     while (j) {
         b = a - 1
         a = L[j--] + 1
         n = b - a + 1
         nmax = max((nmax, n))
-        if (dir<.) {
-            if (W!=1) W[|a\b|] = sort(W[|a\b|],-1)
-            X[|a\b|] = (0::n-1) * dir
+        if (sgn) {
+            // asymmetric stack
+            D[|a\b|] = (0::n-1) * sgn
         }
         else {
-            if (W!=1) {
-                w = sort(W[|a\b|],-1)
-                if (n>1) { // move large weights to middle
-                    if (mod(n,2)) w = w[range(n,1,-2)]   \ w[mm_seq(2,n-1,2)]
-                    else          w = w[range(n-1,1,-2)] \ w[mm_seq(2,n,2)]
-                }
-                W[|a\b|] = w
-            }
-            X[|a\b|] = (0::n-1) :- (n-1)/2
+            // symmetric stack: generate index that forms groups of two
+            // (and a group of 1 with index 0 if n is uneven) and make one of
+            // each group negative
+            d = floor(((0::n-1):+mod(n,2))/2) :+ !mod(n,2)
+            D[|a\b|] = d :* (-1):^mod(1::n,2)[order((d,uniform(n,1)),(1,2))]
         }
     }
-    // store reordered weights (W0 is a view)
-    if (W!=1) W0[.] = W[invorder(p)]
     // return offsets
-    return(X[invorder(p)])
+    return(D[invorder(p)])
 }
 
-void _rag_ipolate_PDF(real scalar a0, real scalar b0, real scalar d)
+void _rag_pread(real scalar a0, real scalar b0, real scalar s1, real scalar s2,
+    real scalar dir)
 {
-    real scalar j, dlo, dup, at, xrag, drag
-    real matrix idx, pdf
+    real scalar    j, n, sgn
+    real scalar    xrag, spid, wrag, dlo, dup, at
+    real colvector D, d, X, W, p, a
+    real matrix    idx, pdf
     
     xrag = st_varindex(st_local("xrag"))
-    drag = st_varindex(st_local("drag"))
-    idx  = _get_index(a0, b0, "rtag", 2)
-    if (d<.) { // fixed value specified by user; do not use PDF
-        for (j=rows(idx);j;j--) {
-            st_store(idx[j,], drag, J(idx[j,2]-idx[j,1]+1, 1, d))
-        }
+    spid = st_varindex(st_local("splitid"))
+    if (st_local("wrag")!="") wrag = st_varindex(st_local("wrag"))
+    idx = _get_index(a0, b0, "rtag", 2)
+    if (s2>=.) {
+        pdf = _get_index(a0, b0, "tag", 1)
+        dlo  = st_varindex(st_local("dlo"))
+        dup  = st_varindex(st_local("dup"))
+        at   = st_varindex(st_local("at"))
     }
-    dlo  = st_varindex(st_local("dlo"))
-    dup  = st_varindex(st_local("dup"))
-    at   = st_varindex(st_local("at"))
-    pdf = _get_index(a0, b0, "tag", 1)
+    st_view(D=., ., st_varindex(st_local("RPOS")))
     for (j=rows(idx);j;j--) {
-        st_store(idx[j,], drag,
-            editmissing(
-                mm_ipolate(st_data(pdf[j,], at),
-                           st_data(pdf[j,], dup)-st_data(pdf[j,], dlo),
-                           st_data(idx[j,], xrag))
-            , 0))
+        n = idx[j,2] - idx[j,1] + 1
+        if (dir) sgn = (-1)^(_st_data(idx[j,1], spid)!=1) * dir
+        if (wrag<. | s2>=.) st_view(X=., idx[j,], xrag)
+        if (wrag<.) {
+            // reorder data so that large dots will be at the back
+            st_view(W=., idx[j,], wrag)
+            p = order(W,-1)
+            W[.] = W[p]
+            X[.] = X[p]
+            // scale spread parameter by relative weight
+            a = rowmin((J(n,1,1e5),rowmax((J(n,1,1),
+                s1 :* (W/_st_data(idx[j,2]+1, wrag))))))
+        }
+        else a = J(n, 1, s1)
+        if (s2<.) d = s2
+        else d = editmissing(mm_ipolate(st_data(pdf[j,], at),
+            st_data(pdf[j,], dup)-st_data(pdf[j,], dlo), X), 0)
+        if (dir) d = d :* (sgn * abs(rbeta(1,1,a,a):-.5))
+        else     d = d :* (          rbeta(1,1,a,a):-.5)
+        D[|idx[j,]'|] = D[|idx[j,]'|] + d
     }
 }
 

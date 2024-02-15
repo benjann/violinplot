@@ -90,6 +90,14 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    15feb2024 (1.1.8)
+    - rag(stack) now uses the same default step size for symmetric and asymmetric
+      stacks
+    - rag(stack) and rag(spread) now print large dots in the back (this is relevant,
+      e.g., if weights have been specified)
+    - rag(spread) now takes account of relative weights when generating the spread
+      (so that large dots tend to be placed more in the center)
+
     14feb2024 (1.1.7)
     - revised the computation of weighted markers in the rag; the sizes are now
       determined in a way such that average weight typically corresponds to the
