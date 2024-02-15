@@ -1,4 +1,4 @@
-*! version 1.1.8  15feb2024  Ben Jann
+*! version 1.1.9  15feb2024  Ben Jann
 
 program violinplot
     version 15
@@ -782,7 +782,7 @@ program violinplot
                 else if "`rag_right'"!="" & "`vertical'"=="" local rag_dir -1
             }
             if "`rag_spread'"!="" {
-                mata: _rag_pread(`r0'+1, `r1', `rag_spread', `rag_spread2',/*
+                mata: _rag_spread(`r0'+1, `r1', `rag_spread', `rag_spread2',/*
                     */ `rag_dir')
             }
             else {
@@ -1841,12 +1841,19 @@ void _copyrag(real scalar a, real scalar b, string scalar out,
     if (out!="") {
         p = selectindex(x:<st_numscalar("r("+out+"lo)") :|
                         x:>st_numscalar("r("+out+"up)"))
+        if (!length(p)) p = J(0,1,.)
         x = x[p]
         if (wvar!="") w = w[p]
     }
-    if (!length(x)) return // nothing to store
-    // store data
     n = rows(x)
+    if (!n) return // nothing to store
+    // reorder data in case of weights (so that large dots will be at the back)
+    if (wvar!="") {
+        p = order((w,(1::n)), (-1,2)) // keep original order within ties
+        _collate(w, p)
+        _collate(x, p)
+    }
+    // store data
     if ((a+n+1)>b) {
         // update range and add observations if necessary
         b = a + n+1
@@ -1923,14 +1930,13 @@ void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
     // typ=2: val contains factor; scale automatic step size by val
     // typ=0: val is missing; use automatic step size
     real scalar    j, d, n, sgn
-    real scalar    xrag, rpos, spid, wrag
-    real colvector D, X, W, p
+    real scalar    xrag, rpos, spid
+    real colvector D, X
     real matrix    idx
     
     xrag = st_varindex(st_local("xrag"))
     rpos = st_varindex(st_local("RPOS"))
     spid = st_varindex(st_local("splitid"))
-    if (st_local("wrag")!="") wrag = st_varindex(st_local("wrag"))
     if (typ!=1) {
         d = max(abs(st_data((a0,b0), st_local("dup")) - 
                     st_data((a0,b0), st_local("dlo")))) / 2
@@ -1942,13 +1948,6 @@ void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
         if (dir) sgn = (-1)^(_st_data(idx[j,1], spid)!=1) * dir
         else     sgn = 0
         st_view(X=., idx[j,], xrag)
-        if (wrag<.) {
-            // reorder data so that large dots will be at the back
-            st_view(W=., idx[j,], wrag)
-            p = order(W,-1)
-            W[.] = W[p]
-            X[.] = X[p]
-        }
         D[|idx[j,]':+(1-a0)|] = _rag_stack_offset(X, sgn, n)
     }
     if (typ!=1) {
@@ -1999,12 +1998,12 @@ real _rag_stack_offset(real colvector X, real scalar sgn, real scalar nmax)
     return(D[invorder(p)])
 }
 
-void _rag_pread(real scalar a0, real scalar b0, real scalar s1, real scalar s2,
+void _rag_spread(real scalar a0, real scalar b0, real scalar s1, real scalar s2,
     real scalar dir)
 {
     real scalar    j, n, sgn
     real scalar    xrag, spid, wrag, dlo, dup, at
-    real colvector D, d, X, W, p, a
+    real colvector D, d, X, a
     real matrix    idx, pdf
     
     xrag = st_varindex(st_local("xrag"))
@@ -2022,16 +2021,8 @@ void _rag_pread(real scalar a0, real scalar b0, real scalar s1, real scalar s2,
         n = idx[j,2] - idx[j,1] + 1
         if (dir) sgn = (-1)^(_st_data(idx[j,1], spid)!=1) * dir
         if (wrag<. | s2>=.) st_view(X=., idx[j,], xrag)
-        if (wrag<.) {
-            // reorder data so that large dots will be at the back
-            st_view(W=., idx[j,], wrag)
-            p = order(W,-1)
-            W[.] = W[p]
-            X[.] = X[p]
-            // scale spread parameter by relative weight
-            a = rowmin((J(n,1,1e5),rowmax((J(n,1,1),
-                s1 :* (W/_st_data(idx[j,2]+1, wrag))))))
-        }
+        if (wrag<.) a = rowmin((J(n,1,1e5),rowmax((J(n,1,1),
+            s1 :* (st_data(idx[j,], wrag) / _st_data(idx[j,2]+1, wrag))))))
         else a = J(n, 1, s1)
         if (s2<.) d = s2
         else d = editmissing(mm_ipolate(st_data(pdf[j,], at),

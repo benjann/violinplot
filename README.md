@@ -90,6 +90,10 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    15feb2024 (1.1.9)
+    - markers of rag will now always be printed in the order of the weights (so that
+     (so that large dots will be at the back; if there are weights)
+
     15feb2024 (1.1.8)
     - rag(stack) now uses the same default step size for symmetric and asymmetric
       stacks
