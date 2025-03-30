@@ -1,4 +1,4 @@
-*! version 1.1.9  15feb2024  Ben Jann
+*! version 1.2.0  30mar2025  Ben Jann
 
 program violinplot
     version 15
@@ -582,7 +582,8 @@ program violinplot
                         qui replace `tag' = 2 in `b' // last row (missing)
                         // stats
                         Fit_stats `"`stats'"' "`xvar'" `"`wgt'"' `"`iff'"' `a'/*
-                            */ `avg' `med' `blo' `bup' `wlo' `wup' `"`qdef'"'
+                            */ `avg' `med' `blo' `bup' `wlo' `wup' `"`qdef'"'/*
+                            */ "`box_limits'"
                         // rag: copy data
                         if "`rag'"!="" {
                             qui replace `rtag' = 1 in `a' // first row
@@ -1425,7 +1426,7 @@ program _parse_fill
 end
 
 program _parse_box
-    syntax [, Statistics(str) Type(str) * ]
+    syntax [, Statistics(str) Type(str) LIMits(numlist max=2 missingok) * ]
     capt n _parse_box_type, `type'
     if _rc {
         di as err "error in option box(type())"
@@ -1442,6 +1443,7 @@ program _parse_box
             exit 198
         }
     }
+    c_local box_limits "`limits'"
     c_local box_stat `"`statistics'"'
     c_local box_type `type'
     c_local box2 `options'
@@ -1769,13 +1771,21 @@ program Fit_PDF
 end
 
 program Fit_stats, rclass
-    args stats xvar wgt iff i avg med blo bup wlo wup qdef
+    args stats xvar wgt iff i avg med blo bup wlo wup qdef box_limits
     qui dstat (`stats') `xvar' `iff' `wgt', nose `qdef'
     tempname S
     mat `S' = e(b)
     if colsof(`S')!=4 {
         di as err "unexpected error; wrong number of summary statistics computed"
         exit 499
+    }
+    if "`box_limits'"!="" { // override limits of box
+        local j 2
+        foreach lim of local box_limits {
+            local ++j
+            if `lim'>=. continue
+            mat `S'[1,`j'] = `lim'
+        }
     }
     mat `S' = `S', `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
                 */ `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])

@@ -1,5 +1,5 @@
 {smcl}
-{* 14feb2024}{...}
+{* 30mar2025}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -491,6 +491,12 @@
     unless {cmd:overlay} or {cmd:split()} is specified. Specify {it:options} to affect the
     rendering of the whiskers; see help {it:{help line_options}}.
 
+{pmore}
+    The whiskers are determined as follows. The upper (lower) whisker is drawn
+    from the upper (lower) edge of the IQR box to the largest (lowest) observed
+    value that is within the upper (lower) edge of the box plus (minus) 1.5
+    times the width of the box.
+
 {marker box}{...}
 {phang}
     [{cmd:no}]{cmd:box}[{cmd:(}{it:options}{cmd:)}] determines
@@ -529,6 +535,10 @@
     quantile. The selected statistics will also affect the computation of the
     whiskers (whiskers are defined, in part, as a function of the lower and
     upper bounds of the box).
+
+{phang2}
+    {opt lim:its(# #)} specifies fixed values for the lower and lower and upper
+    bounds of the box. {cmd:limits()} takes precedence over {cmd:statistics()}.
 
 {phang2}
     {it:line_options} or {it:area_options} are graph options affecting the rendering
@@ -645,10 +655,14 @@
     adding beta distributed random errors to their positions. At each level of
     the data, the error distribution will be scaled in proportion
     to the density estimate at that level (such that the rag mimics the shape of the
-    violin). Argument {it:#1} in [0.001, 100] sets the degree of
+    violin). Set the random-number seed if you want results to be
+    reproducible; see {helpb set seed}.
+
+{pmore2}
+    Argument {it:#1} in [0.001, 100] sets the degree of
     spreading; {it:#1}=100 (maximum spreading) is equivalent to using
     a uniform error distribution; the default is {it:#1}=1
-    (moderate spreading).
+    (moderate spreading). 
 
 {pmore2}
     Optional argument {it:#2} sets the width of the spread to a fixed value
