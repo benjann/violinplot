@@ -1,5 +1,5 @@
 {smcl}
-{* 30mar2025}{...}
+{* 07apr2025}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -35,7 +35,7 @@
 {synoptset 22 tabbed}{...}
 {marker opt}{synopthdr:options}
 {synoptline}
-{syntab :Main}
+{syntab :{help violinplot##main:Main}}
 {synopt :{opt vert:ical}}vertical violins
     {p_end}
 {synopt :{opt hor:izontal}}horizontal violins
@@ -66,7 +66,7 @@
     categories of by-variable
     {p_end}
 
-{syntab :Estimation}
+{syntab :{help violinplot##estimation:Estimation}}
 {synopt :{cmdab:ds:cale(}{it:{help violinplot##dscale:spec}}{cmd:)}}change the
     scaling of the plotted PDFs
     {p_end}
@@ -88,7 +88,7 @@
 {synopt :{opt cw}}omit observations with missing value on any outcome variable
     {p_end}
 
-{syntab :Labels}
+{syntab :{help violinplot##labels:Labels}}
 {synopt :{opt lab:els(strlist)}}provide custom labels for outcome variables
     {p_end}
 {synopt :{opt olab:els(strlist)}}provide custom labels for over categories
@@ -103,7 +103,7 @@
     used in legend keys
     {p_end}
 
-{syntab :Elements}
+{syntab :{help violinplot##elements:Elements}}
 {synopt :[{ul:{cmd:no}}]{cmdab:l:ine}[{cmd:(}{it:{help violinplot##line:options}}{cmd:)}]}whether
     PDF lines are printed; rendering of PDF lines
     {p_end}
@@ -128,12 +128,14 @@
 {synopt :{cmdab:ord:er(}{it:{help violinplot##order:list}}{cmd:)}}change order in which
     elements are printed
     {p_end}
+{synopt :{opt bind}}print elements together within plot
+    {p_end}
 {synopt :{opth off:set(numlist)}}shift position of box plot (and rag)
     {p_end}
 {synopt :{opth doff:set(numlist)}}shift position of PDF
     {p_end}
 
-{syntab :Colors}
+{syntab :{help violinplot##colors:Colors}}
 {synopt :{cmdab:c:olors(}{it:{help violinplot##colors:spec}}{cmd:)}}assign colors
     to results, affecting all elements
     {p_end}
@@ -152,7 +154,7 @@
 {synopt :{opt ragc:olors(spec)}}like {helpb violinplot##colors:colors()}, but only affecting rag
     {p_end}
 
-{syntab :Other}
+{syntab :{help violinplot##other:Other}}
 {synopt :{cmdab:psty:les(}{it:{help violinplot##pstyles:numlist}}{cmd:)}}assign plot styles to results
     {p_end}
 {synopt :{cmd:p}{it:#}{cmd:(}{it:{help violinplot##pnum:options}}{cmd:)}}options passed through to #th result (within group)
@@ -211,6 +213,7 @@
 
 {title:Options}
 
+{marker main}{...}
 {dlgtab:Main}
 
 {phang}
@@ -342,6 +345,7 @@
     {it:byopts} are options passed through to graph's {helpb by()} option, which
     is internally used to generate the subgraphs; see help {it:{help by_option}}.
 
+{marker estimation}{...}
 {dlgtab:Estimation}
 
 {marker dscale}{...}
@@ -416,6 +420,7 @@
     for which any of the outcome variables are missing are ignored. The default
     is to determine the estimation sample for each variable individually.
 
+{marker labels}{...}
 {dlgtab:Labels}
 
 {phang}
@@ -452,6 +457,7 @@
     {cmd:key(line)} or, if option {cmd:noline} has been specified, the element
     that is plotted first.
 
+{marker elements}{...}
 {dlgtab:Elements}
 
 {marker line}{...}
@@ -662,7 +668,7 @@
     Argument {it:#1} in [0.001, 100] sets the degree of
     spreading; {it:#1}=100 (maximum spreading) is equivalent to using
     a uniform error distribution; the default is {it:#1}=1
-    (moderate spreading). 
+    (moderate spreading).
 
 {pmore2}
     Optional argument {it:#2} sets the width of the spread to a fixed value
@@ -713,6 +719,13 @@
     included in the plot are allowed). Elements not included in the list will be
     added last (in their default order). The default order depends on context.
 
+{phang}
+    {opt bind} prints all elements of a plot in one go. By default, elements
+    are printed one after the other across all plots (i.e. print first element for
+    all plots, print second element for all plots, etc.). Specify {cmd:bind} to
+    organize printing by {help violinplot##pstyles:phyical plots} (i.e. print all
+    elements of first plot, print all elements of second plot, etc.).
+
 {marker offset}{...}
 {phang}
     {opth offset(numlist)} shifts the position(s) of the elements of the box plot(s)
@@ -746,9 +759,9 @@
     drawn by a single plot command; see {helpb violinplot##pstyles:pstyles()} for details
     on physical plots.
 
+{marker colors}{...}
 {dlgtab:Colors}
 
-{marker colors}{...}
 {phang}
     {opt colors(spec)} assigns colors to the results, affecting all elements
     of the violin plot (except the median depending on context). The colors will
@@ -784,6 +797,7 @@
 {phang}
     {opt ragcolors(spec)} is like {helpb violinplot##colors:colors()}, but only affects the rag.
 
+{marker other}{...}
 {dlgtab:Other}
 
 {marker pstyles}{...}

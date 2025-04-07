@@ -63,32 +63,48 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 7](/images/7.png)
 
-    violinplot wage, pdf(ll(0)) over(industry, sort) colors(plasma) box(type(fill)) nowhiskers
+    violinplot wage, pdf(ll(0)) over(industry) colors(plasma) fill nobox nowhiskers ///
+        left median(type(line)) dscale(4) bind
 
 ![example 8](/images/8.png)
 
-    violinplot wage, left dscale(.) rag(offset(-.005) mlcolor(%20))
+    violinplot wage, pdf(ll(0)) over(industry, sort) colors(plasma) box(type(fill)) nowhiskers
 
 ![example 9](/images/9.png)
+
+    violinplot wage, left dscale(.) rag(offset(-.005) mlcolor(%20))
+
+![example 10](/images/10.png)
 
     violinplot wage, over(union) overlay left dscale(.) nomedian ///
         rag(offset(-.005 -0.01) mlcolor(%40))
 
-![example 10](/images/10.png)
+![example 11](/images/11.png)
 
     violinplot wage, over(union) vertical fill absolute ///
         rag(spread(10) msymbol(o) mcolor(%20) mlc(%0) pstyle(p2))
 
-![example 10](/images/11.png)
+![example 12](/images/12.png)
 
     sysuse auto, clear
     violinplot mpg turn, left rag(stack right msymbol(o) offset(-.05))
 
-![example 10](/images/12.png)
+![example 13](/images/13.png)
+
+    violinplot mpg turn, rag(unique msize(*4) msymbol(o) mlcolor(white)) ///
+        nobox nowhiskers nomedian
+
+![example 14](/images/14.png)
 
 ---
 
 Main changes:
+
+    07apr2025 (1.2.1)
+    - option -bind- added
+    - option noclean is now applied in internal call to dstat if the list of
+      statistics contains duplicates, e.g. because -median(statistic(mean))- has
+      been specified; this requires dstat version 1.4.5 (04apr2025) or higher
 
     30mar2025 (1.2.0)
     - suboption limits() added to option box()

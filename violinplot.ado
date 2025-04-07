@@ -1,4 +1,4 @@
-*! version 1.2.0  30mar2025  Ben Jann
+*! version 1.2.1  07apr2025  Ben Jann
 
 program violinplot
     version 15
@@ -18,7 +18,7 @@ program violinplot
         cw ///
         LABels(str asis) OLABels(str asis) SLABels(str asis) ///
         BYLABels(str asis) noLABel ///
-        key(str) order(str) ///
+        key(str) order(str) bind ///
         OFFset(numlist) DOFFset(numlist) ///
         NOLine     Line     Line2(str)     LColors(str asis) ///
         NOFill     Fill     Fill2(str)     FColors(str asis) ///
@@ -880,7 +880,6 @@ program violinplot
     }
 
     // fill plots
-    local pfill
     if "`fill'"!="" {
         if "`PID'"=="split" {
             local plt1 rarea `dlo' `Pos' `at'
@@ -895,7 +894,7 @@ program violinplot
             if "`PID'"=="split" {
                 local plt \`plt\`s''
             }
-            local fkeys 0
+            local K_fill 0
             local ii 0
             forv j = 1/`k_`By'' { // subgraph
                 if "`CLUS'"=="var" {
@@ -916,7 +915,7 @@ program violinplot
                             local ++ii
                             if "`psty'"=="" local psty `pstyles'
                             gettoken p psty : psty
-                            local ++fkeys
+                            local ++K_fill
                             _getcolr `i' `fcolors'
                             local popts `axes' `rvert' pstyle(p`p') `p_`i''/*
                                 */ lc(%0) `finten' `colr' `fill2' `p_`i'f'
@@ -925,7 +924,8 @@ program violinplot
                                 local iff ``By'id'==`j' & ``CLUS'id'==`c'/*
                                     */ & ``PLOT'id'==`i' & `splitid'==`s'
                             }
-                            local pfill `pfill' (`plt' if `iff', `popts')
+                            local pfill_`i' `pfill_`i''/*
+                                */ (`plt' if `iff', `popts')
                         }
                     }
                 }
@@ -935,22 +935,20 @@ program violinplot
             if "`PID'"=="split" {
                 local plt \`plt\`i''
             }
-            local fkeys `k_`PID''
+            local K_fill `k_`PID''
             local psty `pstyles'
-            forv i = 1/`fkeys' {
+            forv i = 1/`K_fill' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `fcolors'
-                local popts `axes' `rvert' pstyle(p`p') `p_`i'' lc(%0) `finten'/*
-                    */ `colr' `fill2' `p_`i'f'
-                local pfill `pfill'/*
-                    */ (`plt' if ``PID'id'==`i', cmissing(n) `popts')
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' lc(%0)/*
+                    */ `finten' `colr' `fill2' `p_`i'f'
+                local pfill_`i' (`plt' if ``PID'id'==`i', cmissing(n) `popts')
             }
         }
     }
     
     // line plots
-    local pline
     if "`line'"!="" {
         if "`PID'"=="split" {
             if "`vertical'"!="" {
@@ -978,22 +976,21 @@ program violinplot
             local plt rline `dlo' `dup' `at'
             local popts0 `rvert'
         }
-        local lkeys `k_`PID''
+        local K_line `k_`PID''
         local psty `pstyles'
         if `lineomit' local iff 0
         else          local iff "``PID'id'==\`i'"
-        forv i = 1/`lkeys' {
+        forv i = 1/`K_line' {
             if "`psty'"=="" local psty `pstyles'
             gettoken p psty : psty
             _getcolr `i' `lcolors'
             local popts `axes' `popts0' pstyle(p`p') `p_`i'' `colr' `line2'/*
                 */ `p_`i'l'
-            local pline `pline' (`plt' if `iff', cmissing(n) `popts')
+            local pline_`i' (`plt' if `iff', cmissing(n) `popts')
         }
     }
     
     // whisker plots
-    local pwhisk
     if "`whiskers'"!="" {
         local psty `pstyles'
         forv i = 1/`k_`PID'' {
@@ -1002,17 +999,16 @@ program violinplot
             _getcolr `i' `wcolors'
             local popts `axes' `rhor' pstyle(p`p') `p_`i'' `colr' `whiskers2'/*
                 */ `p_`i'w'
-            local pwhisk `pwhisk'/*
+            local pwhiskers_`i'/*
                 */ (rspike `wlo' `blo' `POS' if ``PID'id'==`i', `popts') /*
                 */ (rspike `bup' `wup' `POS' if ``PID'id'==`i', `popts')
         }
-        local wkeys = 2*`k_`PID''
+        local K_whiskers = 2 * `k_`PID''
     }
     
     // box plots
-    local pbox
     if "`box'"!="" {
-        local bkeys `k_`PID''
+        local K_box `k_`PID''
         local psty `pstyles'
         if "`box_type'"=="fill" {
             if "`PID'"=="split" {
@@ -1025,14 +1021,13 @@ program violinplot
             else                  local plt rarea `box_dlo' `box_dup' `box_at'
             if `"`box2'"'=="" local finten fintensity(50)
             else              local finten
-            forv i = 1/`bkeys' {
+            forv i = 1/`K_box' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `bcolors'
                 local popts `axes' `rvert' pstyle(p`p') `p_`i'' lc(%0)/*
                     */ `finten' `colr' `box2' `p_`i'b'
-                local pbox `pbox'/*
-                    */ (`plt' if ``PID'id'==`i', cmissing(n) `popts')
+                local pbox_`i' (`plt' if ``PID'id'==`i', cmissing(n) `popts')
             }
         }
         else if "`box_type'"=="lines" {
@@ -1046,35 +1041,33 @@ program violinplot
             else if "`left'"!=""  local plt rspike `box_dlo' `Pos' `box_at'
             else if "`right'"!="" local plt rspike `Pos' `box_dup' `box_at'
             else                  local plt rspike `box_dlo' `box_dup' `box_at'
-            forv i = 1/`bkeys' {
+            forv i = 1/`K_box' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `bcolors'
                 local popts `axes' `rvert' pstyle(p`p') `p_`i'' `lpopt' `colr'/*
                     */ `box2' `p_`i'b'
-                local pbox `pbox'/*
-                    */ (`plt' if ``PID'id'==`i', `popts')
+                local pbox_`i' (`plt' if ``PID'id'==`i', `popts')
             }
         }
         else {
             if `"`box2'"'=="" local boxwd lw(vthick)
             else              local boxwd
-            forv i = 1/`bkeys' {
+            forv i = 1/`K_box' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `bcolors'
                 local popts `axes' `rhor' pstyle(p`p') `p_`i'' `boxwd' `colr'/*
                     */ `box2' `p_`i'b'
-                local pbox `pbox'/*
+                local pbox_`i'/*
                     */ (rspike `blo' `bup' `POS' if ``PID'id'==`i', `popts')
             }
         }
     }
     
     // median plots
-    local pmed
     if "`median'"!="" {
-        local mkeys `k_`PID''
+        local K_median `k_`PID''
         local psty `pstyles'
         if "`median_type'"=="line" {
             if "`PID'"=="split" {
@@ -1086,14 +1079,13 @@ program violinplot
             else if "`right'"!=""  local plt rspike `Pos' `med_dup' `med'
             else                   local plt rspike `med_dlo' `med_dup' `med'
             if `"`medcolors'"'=="" local medcolors `"`colors'"'
-            forv i = 1/`mkeys' {
+            forv i = 1/`K_median' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `medcolors'
                 local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr'/*
                     */ `median2' `p_`i'med'
-                local pmed `pmed'/*
-                    */ (`plt' if ``PID'id'==`i', `popts')
+                local pmedian_`i' (`plt' if ``PID'id'==`i', `popts')
             }
         }
         else {
@@ -1106,25 +1098,24 @@ program violinplot
             else {
                 local msym msymbol(O) msize(vsmall)
                 if `"`medcolors'"'=="" {
-                    mata: st_local("medcolors", invtokens(J(1,`mkeys',"white")))
+                    mata: st_local("medcolors", /*
+                        */ invtokens(J(1,`K_median',"white")))
                 }
             }
-            forv i = 1/`mkeys' {
+            forv i = 1/`K_median' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `medcolors'
                 local popts `axes' pstyle(p`p') `p_`i'' `msym' `colr'/*
                     */ `median2' `p_`i'med'
-                local pmed `pmed'/*
-                    */ (scatter `vlist' if ``PID'id'==`i', `popts')
+                local pmedian_`i' (scatter `vlist' if ``PID'id'==`i', `popts')
             }
         }
     }
     
     // mean plots
-    local pmean
     if "`mean'"!="" {
-        local akeys `k_`PID''
+        local K_mean `k_`PID''
         local psty `pstyles'
         if "`mean_type'"=="line" {
             if "`PID'"=="split" {
@@ -1135,14 +1126,13 @@ program violinplot
             else if "`left'"!=""  local plt rspike `avg_dlo' `Pos' `avg'
             else if "`right'"!="" local plt rspike `Pos' `avg_dup' `avg'
             else                  local plt rspike `avg_dlo' `avg_dup' `avg'
-            forv i = 1/`akeys' {
+            forv i = 1/`K_mean' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `meancolors'
                 local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr'/*
                     */ `mean2' `p_`i'mean'
-                local pmean `pmean'/*
-                    */ (`plt' if ``PID'id'==`i', `popts')
+                local pmean_`i' (`plt' if ``PID'id'==`i', `popts')
             }
         }
         else {
@@ -1154,22 +1144,20 @@ program violinplot
             }
             else local vlist `POS' `avg'
             if `"`mean2'"'!="" local msopts
-            forv i = 1/`akeys' {
+            forv i = 1/`K_mean' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `meancolors'
                 local popts `axes' pstyle(p`p') `p_`i'' `msopts' `colr'/*
                     */ `mean2' `p_`i'mean'
-                local pmean `pmean'/*
-                    */ (scatter `vlist' if ``PID'id'==`i', `popts')
+                local pmean_`i' (scatter `vlist' if ``PID'id'==`i', `popts')
             }
         }
     }
     
     // rag plots
-    local prag
     if "`rag'"!="" {
-        local rkeys `k_`PID''
+        local K_rag `k_`PID''
         local psty `pstyles'
         local msopts msymbol(pipe)
         if "`vertical'"!="" {
@@ -1177,56 +1165,43 @@ program violinplot
             local msopts `msopts' msangle(90)
         }
         else local vlist `RPOS' `xrag'
-        forv i = 1/`rkeys' {
+        forv i = 1/`K_rag' {
             if "`psty'"=="" local psty `pstyles'
             gettoken p psty : psty
             _getcolr `i' `ragcolors'
             local popts `axes' pstyle(p`p') `p_`i'' `msopts' `colr'/*
                 */ `rag2' `p_`i'rag'
-            local prag `prag'/*
-                */ (scatter `vlist' `ragwgt' if ``PID'id'==`i', `popts')
+            local prag_`i' (scatter `vlist' `ragwgt' if ``PID'id'==`i', `popts')
         }
     }
     
     // put together plot command in right order and determine legend keys
     local plots
+    local ikeys
     local nkeys 0
-    local ikey 0
-    foreach el of local plotlist {
-        if "`el'"=="fill" {
-            local plots `plots' `pfill'
-            if "`key'"=="`el'" local ikey  `nkeys'
-            else               local nkeys = `nkeys' + `fkeys'
+    if "`bind'"!="" { // plot by plot
+        forv i = 1/`k_`PID'' {
+            foreach el of local plotlist {
+                local plots `plots' `p`el'_`i''
+                local ++nkeys
+                if "`key'"=="`el'" local ikeys `ikeys' `nkeys'
+                if "`el'"=="whiskers" local ++nkeys
+            }
         }
-        else if "`el'"=="line" {
-            local plots `plots' `pline'
-            if "`key'"=="`el'" local ikey `nkeys'
-            else               local nkeys = `nkeys' + `lkeys'
-        }
-        else if "`el'"=="whiskers" {
-            local plots `plots' `pwhisk'
-            if "`key'"=="`el'" local ikey `nkeys'
-            else               local nkeys = `nkeys' + `wkeys'
-        }
-        else if "`el'"=="box" {
-            local plots `plots' `pbox'
-            if "`key'"=="`el'" local ikey `nkeys'
-            else               local nkeys = `nkeys' + `bkeys'
-        }
-        else if "`el'"=="median" {
-            local plots `plots' `pmed'
-            if "`key'"=="`el'" local ikey `nkeys'
-            else               local nkeys = `nkeys' + `mkeys'
-        }
-        else if "`el'"=="mean" {
-            local plots `plots' `pmean'
-            if "`key'"=="`el'" local ikey `nkeys'
-            else               local nkeys = `nkeys' + `akeys'
-        }
-        else if "`el'"=="rag" {
-            local plots `plots' `prag'
-            if "`key'"=="`el'" local ikey `nkeys'
-            else               local nkeys = `nkeys' + `rkeys'
+    }
+    else { // element by element
+        foreach el of local plotlist {
+            forv i = 1/`k_`PID'' {
+                local plots `plots' `p`el'_`i''
+            }
+            if "`key'"=="`el'" {
+                forv i = 1/`k_`PID'' {
+                    local ++nkeys
+                    local ikeys `ikeys' `nkeys'
+                    if "`el'"=="whiskers" local ++nkeys
+                }
+            }
+            else local nkeys = `nkeys' + `K_`el''
         }
     }
     
@@ -1310,20 +1285,11 @@ program violinplot
     
     // compile legend option
     local legend
-    if "`split'"!="" {
-        forv i = 1 / `k_split' {
-            gettoken lab splitlbls : splitlbls
-            local ++ikey
-            local legend `legend' `ikey' `"`lab'"'
-            if "`key'"=="whiskers" local ++ikey
-        }
-    }
-    else if `k_`PLOT''>1 & (`k_`CLUS''>1 | "`overlay'"!="") & !`stack' {
-        forv i = 1 / `k_`PLOT'' {
-            gettoken lab `PLOT'lbls : `PLOT'lbls
-            local ++ikey
-            local legend `legend' `ikey' `"`lab'"'
-            if "`key'"=="whiskers" local ++ikey
+    if ("`split'"!="") |/*
+        */ (`k_`PLOT''>1 & (`k_`CLUS''>1 | "`overlay'"!="") & !`stack') {
+        foreach i of local ikeys {
+            gettoken lab `PID'lbls : `PID'lbls
+            local legend `legend' `i' `"`lab'"'
         }
     }
     if `"`legend'"'!="" {
@@ -1772,7 +1738,9 @@ end
 
 program Fit_stats, rclass
     args stats xvar wgt iff i avg med blo bup wlo wup qdef box_limits
-    qui dstat (`stats') `xvar' `iff' `wgt', nose `qdef'
+    if `"`:list dups stats'"'!="" local noclean noclean
+    else                          local noclean
+    qui dstat (`stats') `xvar' `iff' `wgt', nose `noclean' `qdef'
     tempname S
     mat `S' = e(b)
     if colsof(`S')!=4 {
