@@ -100,6 +100,9 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    23apr2025 (1.2.2)
+    - suboption -statistics()- now available in -whiskers()-
+
     07apr2025 (1.2.1)
     - option -bind- added
     - option noclean is now applied in internal call to dstat if the list of

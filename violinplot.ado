@@ -1,4 +1,4 @@
-*! version 1.2.1  07apr2025  Ben Jann
+*! version 1.2.2  23apr2025  Ben Jann
 
 program violinplot
     version 15
@@ -121,6 +121,7 @@ program violinplot
             di as err "whiskers and nowhiskers not both allowed"
             exit 198
         }
+        _parse_whisk, `whiskers2' // returns whisk_stat, whiskers2
     }
     // - box option: default is box unless overlay has been specified
     if "`nobox'`overlay'"=="" local box box
@@ -130,7 +131,7 @@ program violinplot
             di as err "box and nobox not both allowed"
             exit 198
         }
-        _parse_box, `box2' // returns box_type, box2
+        _parse_box, `box2' // returns box_type, box_limits, box_stat, box2
         if "`box_type'"=="" {
             if "`split'"!="" local box_type lines
             else             local box_type bar
@@ -144,7 +145,7 @@ program violinplot
             di as err "median and nomedian not both allowed"
             exit 198
         }
-        _parse_med, `median2' // returns median_type, median2
+        _parse_med, `median2' // returns median_type, median_stat, median2
         if "`median_type'"=="" {
             if "`split'"!="" local median_type line
             else             local median_type marker
@@ -157,7 +158,7 @@ program violinplot
             di as err "mean and nomean not both allowed"
             exit 198
         }
-        _parse_mean, `mean2' // returns mean_type, mean2
+        _parse_mean, `mean2' // returns mean_type, mean_stat, mean2
         if "`mean_type'"=="" local mean_type marker
     }
     // - rag option: default is norag
@@ -583,7 +584,7 @@ program violinplot
                         // stats
                         Fit_stats `"`stats'"' "`xvar'" `"`wgt'"' `"`iff'"' `a'/*
                             */ `avg' `med' `blo' `bup' `wlo' `wup' `"`qdef'"'/*
-                            */ "`box_limits'"
+                            */ "`box_limits'" `"`whisk_stat'"'
                         // rag: copy data
                         if "`rag'"!="" {
                             qui replace `rtag' = 1 in `a' // first row
@@ -1391,6 +1392,23 @@ program _parse_fill
     c_local fill2 `options'
 end
 
+program _parse_whisk
+    syntax [, Statistics(str) * ]
+    if `"`statistics'"'!="" {
+        _parse_count_stats `statistics'
+        if `nstats'>2 {
+            di as err "whiskers(statistics()): too many statistics specified"
+            exit 198
+        }
+        else if `nstats'<2 {
+            di as err "whiskers(statistics()): two statistics required"
+            exit 198
+        }
+    }
+    c_local whisk_stat `"`statistics'"'
+    c_local whiskers2 `options'
+end
+
 program _parse_box
     syntax [, Statistics(str) Type(str) LIMits(numlist max=2 missingok) * ]
     capt n _parse_box_type, `type'
@@ -1737,13 +1755,18 @@ program Fit_PDF
 end
 
 program Fit_stats, rclass
-    args stats xvar wgt iff i avg med blo bup wlo wup qdef box_limits
+    args stats xvar wgt iff i avg med blo bup wlo wup qdef box_limits whisk
+    if `"`whisk'"'!="" {
+        local stats `"`stats' `whisk'"'
+        local nstats 6
+    }
+    else local nstats 4
     if `"`:list dups stats'"'!="" local noclean noclean
     else                          local noclean
     qui dstat (`stats') `xvar' `iff' `wgt', nose `noclean' `qdef'
     tempname S
     mat `S' = e(b)
-    if colsof(`S')!=4 {
+    if colsof(`S')!=`nstats' {
         di as err "unexpected error; wrong number of summary statistics computed"
         exit 499
     }
@@ -1755,23 +1778,28 @@ program Fit_stats, rclass
             mat `S'[1,`j'] = `lim'
         }
     }
-    mat `S' = `S', `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
-                */ `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])
     qui replace `avg' = `S'[1,1] in `i'
     qui replace `med' = `S'[1,2] in `i'
     qui replace `blo' = `S'[1,3] in `i'
     qui replace `bup' = `S'[1,4] in `i'
-    local ifrng inrange(`xvar', `S'[1,5], `S'[1,6])
-    if `"`iff'"'!="" local ifrng `"`iff' & `ifrng'"'
-    else             local ifrng `"if `ifrng'"'
-    su `xvar' `ifrng', meanonly
-    qui replace `wlo' = r(min) in `i'
-    qui replace `wup' = r(max) in `i'
+    // whiskers
+    if `nstats'==4 {
+        mat `S' = `S', `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
+                    */ `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])
+        local ifrng inrange(`xvar', `S'[1,5], `S'[1,6])
+        if `"`iff'"'!="" local ifrng `"`iff' & `ifrng'"'
+        else             local ifrng `"if `ifrng'"'
+        su `xvar' `ifrng', meanonly
+        mat `S'[1,5] = r(min)
+        mat `S'[1,6] = r(max)
+    }
+    qui replace `wlo' = `S'[1,5] in `i'
+    qui replace `wup' = `S'[1,6] in `i'
     // returns
-    return scalar wlo = r(min)
-    return scalar wup = r(max)
     return scalar blo = `S'[1,3]
     return scalar bup = `S'[1,4]
+    return scalar wlo = `S'[1,5]
+    return scalar wup = `S'[1,6]
 end
 
 program _dscale

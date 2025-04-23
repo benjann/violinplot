@@ -1,5 +1,5 @@
 {smcl}
-{* 07apr2025}{...}
+{* 23apr2025}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -494,14 +494,22 @@
 {phang}
     [{cmd:no}]{cmdab:whiskers}[{cmd:(}{it:options}{cmd:)}] determines
     whether the whiskers are printed or not. The default is to print the whiskers
-    unless {cmd:overlay} or {cmd:split()} is specified. Specify {it:options} to affect the
-    rendering of the whiskers; see help {it:{help line_options}}.
+    unless {cmd:overlay} or {cmd:split()} is specified. {it:options}
+    are as follows.
 
-{pmore}
-    The whiskers are determined as follows. The upper (lower) whisker is drawn
-    from the upper (lower) edge of the IQR box to the largest (lowest) observed
-    value that is within the upper (lower) edge of the box plus (minus) 1.5
-    times the width of the box.
+{phang2}
+    {opt s:tatistics(lo up)} selects custom statistics to be used for the
+    outer limits of the whiskers. Any statistics supported by
+    {helpb dstat##stats:dstat} are allowed. For example, type
+    {cmd:statistics(p5 p95)} to draw the whiskers down to the 5% quantile
+    and up to the 95% quantile of the data. If {cmd:statistics()} is omitted,
+    the outer limits of the whiskers are determined by the most distant points
+    from the edges of the IQR box that are within 1.5 times the width of
+    the box.
+
+{phang2}
+    {it:line_options} are graph options affecting the rendering
+    of the whiskers; see help {it:{help line_options}}.
 
 {marker box}{...}
 {phang}
@@ -535,12 +543,10 @@
 {phang2}
     {opt s:tatistics(lo up)} selects custom statistics to be used for the
     lower and upper bounds of the box. Any statistics supported by
-    {helpb dstat##stats:dstat} are allowed. Default is {cmd:stat(p25 p75)}
-    (lower and upper quartile). For example, type {cmd:stat(p10 p90)} to print
+    {helpb dstat##stats:dstat} are allowed. Default is {cmd:statistics(p25 p75)}
+    (lower and upper quartile). For example, type {cmd:statistics(p10 p90)} to print
     a box spanning the range between the 10% quantile and the 90%
-    quantile. The selected statistics will also affect the computation of the
-    whiskers (whiskers are defined, in part, as a function of the lower and
-    upper bounds of the box).
+    quantile.
 
 {phang2}
     {opt lim:its(# #)} specifies fixed values for the lower and lower and upper
@@ -577,7 +583,7 @@
 {phang2}
     {opt s:tatistic(statistic)} selects a custom statistic to be used instead of the
     median. Any statistic supported by {helpb dstat##stats:dstat} is allowed. Default
-    is {cmd:stat(median)}. For example, type {cmd:stat(hl)} to use the
+    is {cmd:statistic(median)}. For example, type {cmd:statistic(hl)} to use the
     Hodges-Lehmann location measure.
 
 {phang2}
@@ -607,7 +613,7 @@
 {phang2}
     {opt s:tatistic(statistic)} selects a custom statistic to be used instead of the
     mean. Any statistic supported by {helpb dstat##stats:dstat} is allowed. Default
-    is {cmd:stat(mean)} (arithmetic mean). For example, type {cmd:stat(trim(5))} to use
+    is {cmd:statistic(mean)} (arithmetic mean). For example, type {cmd:statistic(trim5)} to use
     the 5% trimmed mean.
 
 {phang2}
