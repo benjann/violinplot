@@ -100,6 +100,11 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 Main changes:
 
+    25apr2025 (1.2.3)
+    - density estimation is now skipped if display of density curves is suppressed
+      (i.e. if both -noline- and -nofill- are specified) and none of the other
+      elements makes use of the density estimates
+
     23apr2025 (1.2.2)
     - suboption -statistics()- now available in -whiskers()-
 

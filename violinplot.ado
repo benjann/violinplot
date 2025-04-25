@@ -1,4 +1,4 @@
-*! version 1.2.2  23apr2025  Ben Jann
+*! version 1.2.3  25apr2025  Ben Jann
 
 program violinplot
     version 15
@@ -228,6 +228,26 @@ program violinplot
     local dscale = `dscale' * 0.5
     if "`tight'"=="" local tight `ltight' `rtight'
     local hasaddplot = `"`addplot'"'!=""
+    
+    // determine whether density estimation is needed
+    if "`line'`fill'"=="" {
+        local domit 1
+        if      "`box_type'"=="fill"    local domit 0
+        else if "`box_type'"=="lines"   local domit 0
+        else if "`median_type'"=="line" local domit 0
+        else if "`mean_type'"=="line"   local domit 0
+        else if "`rag_spread'"!="" {
+            if `rag_spread2'>=.         local domit 0
+        }
+        else if "`rag_stack'"!="" {
+            if `rag_stack'!=1           local domit 0
+        }
+    }
+    else local domit 0
+    if `domit' {
+        local dstype
+        local doffset
+    }
     
     // parse varlist
     gettoken varlist : anything, match(haspar)
@@ -551,7 +571,8 @@ program violinplot
                         su `xvar' `iff', meanonly
                         local N = r(N)
                         if (`N'==0) continue // no observation
-                        local x_is_cons = r(max)==r(min)
+                        if `domit' local x_is_cons 1
+                        else       local x_is_cons = r(max)==r(min)
                         // density estimate
                         if !`x_is_cons' {
                             Fit_PDF "`xvar'" `"`wgt'"' `"`iff'"' "`tight'"/*
@@ -715,7 +736,7 @@ program violinplot
                 */ dscale(`dscale')
         }
     }
-    else {
+    else if !`domit' {
         _dscale `dup' `dlo' `pos' `in', dscale(`dscale')
     }
     
@@ -1732,7 +1753,8 @@ end
 program Fit_PDF
     tempname ll ul wd0 wd
     args xvar wgt iff tight lb ub exact n pdfopts
-    qui dstat pdf `xvar' `iff' `wgt', nose `tight' `exact' `n' `pdfopts'
+    qui dstat pdf `xvar' `iff' `wgt', nose noheader notable/*
+        */ `tight' `exact' `n' `pdfopts'
     local n: colsof e(b)
     scalar `ll' = el(e(at),1,1)
     scalar `ul' = el(e(at),1,`n')
@@ -1763,7 +1785,8 @@ program Fit_stats, rclass
     else local nstats 4
     if `"`:list dups stats'"'!="" local noclean noclean
     else                          local noclean
-    qui dstat (`stats') `xvar' `iff' `wgt', nose `noclean' `qdef'
+    qui dstat (`stats') `xvar' `iff' `wgt', nose noheader notable/*
+        */ `noclean' `qdef'
     tempname S
     mat `S' = e(b)
     if colsof(`S')!=`nstats' {
