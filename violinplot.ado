@@ -1,10 +1,10 @@
-*! version 1.2.3  25apr2025  Ben Jann
+*! version 1.2.4  29apr2025  Ben Jann
 
-program violinplot
+program violinplot, rclass
     version 15
     
     // syntax
-    syntax [anything] [if] [in] [pw iw fw] [, ///
+    syntax [anything] [if] [in] [pw iw fw] [, TABle ///
         VERTical HORizontal ///
         Left Right ///
         OVERLay ///
@@ -546,12 +546,13 @@ program violinplot
     }
     
     // compute results
+    tempname TMP N NOBS STATS BWIDTH
     local preserve preserve
     if `hasaddplot' local r0 = _N // (append results)
     else            local r0 0
     local r1 `r0'
-    local j 0
-    local o 0
+    local eq 0
+    local eqs
     local bylvls: copy local bylevels
     forv j = 1/`k_by' {
         gettoken bylev bylvls : bylvls
@@ -560,17 +561,31 @@ program violinplot
             gettoken olev olvls : olvls
             local slvls: copy local splitlevels
             forv s = 1/`k_split' {
+                local ++eq
                 gettoken slev slvls : slvls
-                _makeiff `touse' `TOUSE' /* returns iff and tousej
+                _makeiff `touse' `TOUSE' /* returns iff, tousej, eqlbl
                     */ `j' `k0_by'   "`by'"    `bystr'    `"`bylev'"' /*
                     */ `o' `k0_over' "`over'"  `overstr'  `"`olev'"' /*
                     */ `s'           "`split'" `splitstr' `"`slev'"'
+                local eq`eq' `"`eqlbl'"'
+                local EQ`eq' `"`eqLBL'"'
                 forv g = 1/`k_grp' {
                     forv i = 1/`k_var_`g'' {
+                        local eqs `eqs' `eq'
                         local xvar: word `i' of `varlist_`g''
                         su `xvar' `iff', meanonly
-                        local N = r(N)
-                        if (`N'==0) continue // no observation
+                        matrix `N' = (r(N), 0)
+                        matrix rown `N' = `xvar'
+                        if (`N'[1,1]==0) { // no observations
+                            matrix `NOBS' = nullmat(`NOBS') \ `N'
+                            matrix `TMP' = .
+                            mat rown `TMP' = `xvar'
+                            matrix `BWIDTH' = nullmat(`BWIDTH') \ `TMP'
+                            matrix `TMP' = J(1,6,.)
+                            mat rown `TMP' = `xvar'
+                            matrix `STATS' = nullmat(`STATS')  \ `TMP'
+                            continue
+                        }
                         if `domit' local x_is_cons 1
                         else       local x_is_cons = r(max)==r(min)
                         // density estimate
@@ -578,8 +593,14 @@ program violinplot
                             Fit_PDF "`xvar'" `"`wgt'"' `"`iff'"' "`tight'"/*
                                 */ "`lb'" "`ub'" "`exact'" "`nopt'" `"`pdfopts'"'
                             local n: colsof e(b)
+                            matrix `BWIDTH' = nullmat(`BWIDTH') \ e(bwidth)'
                         }
-                        else local n 1 // skip density estimate if x is constant
+                        else { // skip density estimate if x is constant
+                            local n 1
+                            matrix `TMP' = .
+                            mat rown `TMP' = `xvar'
+                            matrix `BWIDTH' = nullmat(`BWIDTH') \ `TMP'
+                        }
                         local a = `r1' + 1
                         local b = `r1' + `n' + 1 // insert empty row at end
                         if `b' > _N {
@@ -606,6 +627,9 @@ program violinplot
                         Fit_stats `"`stats'"' "`xvar'" `"`wgt'"' `"`iff'"' `a'/*
                             */ `avg' `med' `blo' `bup' `wlo' `wup' `"`qdef'"'/*
                             */ "`box_limits'" `"`whisk_stat'"'
+                        matrix `STATS' = nullmat(`STATS') \ r(stats)
+                        matrix `N'[1,2] = r(sum_w)
+                        matrix `NOBS'  = nullmat(`NOBS')  \ `N'
                         // rag: copy data
                         if "`rag'"!="" {
                             qui replace `rtag' = 1 in `a' // first row
@@ -623,6 +647,25 @@ program violinplot
                 }
             }
         }
+    }
+    local neq `eq'
+    if `"`whisk_stat'"'!="" local coln `stats' `whisk_stat'
+    else                    local coln `stats' whisk_l whisk_u
+    if !`domit' {
+        mat `STATS' = `BWIDTH', `STATS'
+        local coln bwidth `coln'
+    }
+    if !inlist("`weight'","","fweight") {
+        mat `STATS' = `NOBS', `STATS'
+        local coln N sum_w `coln'
+    }
+    else {
+        mat `STATS' = `NOBS'[1...,1], `STATS'
+        local coln N `coln'
+    }
+    mat coln `STATS' = `coln'
+    if "`by'`over'`split'"!="" {
+        mat roweq `STATS'  = `eqs'
     }
     
     // check whether there have been any valid observations at all
@@ -1359,6 +1402,24 @@ program violinplot
         local addplot `"|| `addplot' ||"'
     }
     twoway `plots' `addplot', `xti' `yti' `legend' `ylabels' `byopt' `options'
+    
+    // display
+    if "`table'"!="" {
+        if "`by'`over'`split'"!="" {
+            di ""
+            forv eq = 1/`neq' {
+                di as txt "{ralign 13:`eq'}" as txt `": `eq`eq''"'
+            }
+        }
+        matlist `STATS', border(rows)
+    }
+    
+    // returns
+    return scalar neq = `neq'
+    forv eq = `neq'(-1)1 {
+        return local eq`eq' `"`EQ`eq''"'
+    }
+    return matrix table = `STATS'
 end
 
 program _parse_overby
@@ -1416,7 +1477,7 @@ end
 program _parse_whisk
     syntax [, Statistics(str) * ]
     if `"`statistics'"'!="" {
-        _parse_count_stats `statistics'
+        _parse_stats `statistics' // stats, nstats
         if `nstats'>2 {
             di as err "whiskers(statistics()): too many statistics specified"
             exit 198
@@ -1426,7 +1487,7 @@ program _parse_whisk
             exit 198
         }
     }
-    c_local whisk_stat `"`statistics'"'
+    c_local whisk_stat `"`stats'"'
     c_local whiskers2 `options'
 end
 
@@ -1438,7 +1499,7 @@ program _parse_box
         exit _rc
     }
     if `"`statistics'"'!="" {
-        _parse_count_stats `statistics'
+        _parse_stats `statistics' // stats, nstats
         if `nstats'>2 {
             di as err "box(statistics()): too many statistics specified"
             exit 198
@@ -1449,7 +1510,7 @@ program _parse_box
         }
     }
     c_local box_limits "`limits'"
-    c_local box_stat `"`statistics'"'
+    c_local box_stat `"`stats'"'
     c_local box_type `type'
     c_local box2 `options'
 end
@@ -1471,12 +1532,12 @@ program _parse_med
         di as err "error in option median(type())"
         exit _rc
     }
-    _parse_count_stats `statistic'
+    _parse_stats `statistic' // stats, nstat
     if `nstats'>1 {
         di as err "median(statistic()): only one statistic allowed"
         exit 198
     }
-    c_local median_stat `"`statistic'"'
+    c_local median_stat `"`stats'"'
     c_local median_type `type'
     c_local median2     `options'
 end
@@ -1488,12 +1549,12 @@ program _parse_mean
         di as err "error in option mean(type())"
         exit _rc
     }
-    _parse_count_stats `statistic'
+    _parse_stats `statistic' // stats, nstat
     if `nstats'>1 {
         di as err "mean(statistic()): only one statistic allowed"
         exit 198
     }
-    c_local mean_stat `"`statistic'"'
+    c_local mean_stat `"`stats'"'
     c_local mean_type `type'
     c_local mean2     `options'
 end
@@ -1508,13 +1569,24 @@ program _parse_med_type
     c_local type `type'
 end
 
-program _parse_count_stats
+program _parse_stats
     local j 0
+    local stats
+    local space
     while (`"`0'"'!="") {
         gettoken s 0 : 0, bind
+        gettoken next : 0, match(par)
+        if "`par'"=="(" {
+            gettoken next 0 : 0, match(par)
+            local s `"`s'(`next')"'
+        }
         local ++j
+        local s: subinstr local s " " "", all
+        local stats `"`stats'`space'`s'"'
+        local space " "
     }
     c_local nstats `j'
+    c_local stats `"`stats'"'
 end
 
 program _parse_rag
@@ -1711,23 +1783,42 @@ end
 program _makeiff
     args touse TOUSE j j0 by bystr bylev o o0 over ostr olev s split sstr slev
     local iff
+    local lbl
+    local LBL
+    local totl 0
     if "`by'"!="" {
         if `j'<=`j0' { // (i.e. if not total)
             if `bystr' local iff `"`by'==`"`bylev'"'"'
             else       local iff `"`by'==`bylev'"'
+            local lbl `"`by' = {bf:`bylev'}"'
+            local LBL `"`by' = `bylev'"'
         }
+        else local totl 1
     }
     if "`over'"!="" {
         if `o'<=`o0' { // (i.e. if not total)
             if `"`iff'"'!="" local iff `"`iff' & "'
             if `ostr' local iff `"`iff'`over'==`"`olev'"'"'
             else      local iff `"`iff'`over'==`olev'"'
+            if `"`lbl'"'!="" {
+                local lbl `"`lbl', "'
+                local LBL `"`LBL', "'
+            }
+            local lbl `"`lbl'`over' = {bf:`olev'}"'
+            local LBL `"`LBL'`over' = `olev'"'
         }
+        else local totl 1
     }
     if "`split'"!="" {
         if `"`iff'"'!="" local iff `"`iff' & "'
         if `sstr' local iff `"`iff'`split'==`"`slev'"'"'
         else      local iff `"`iff'`split'==`slev'"'
+        if `"`lbl'"'!="" {
+            local lbl `"`lbl', "'
+            local LBL `"`LBL', "'
+        }
+        local lbl `"`lbl'`split' = {bf:`slev'}"'
+        local LBL `"`LBL'`split' = `slev'"'
     }
     if `"`iff'"'!="" {
         qui replace `TOUSE' = (`touse' & `iff')
@@ -1738,6 +1829,14 @@ program _makeiff
         c_local tousej `touse'
         c_local iff "if `touse'"
     }
+    if `totl' {
+        if `"`lbl'"'=="" {
+            local lbl "Total"
+            local LBL "Total"
+        }
+    }
+    c_local eqlbl `"`lbl'"'
+    c_local eqLBL `"`LBL'"'
 end
 
 program _addobs
@@ -1807,8 +1906,10 @@ program Fit_stats, rclass
     qui replace `bup' = `S'[1,4] in `i'
     // whiskers
     if `nstats'==4 {
-        mat `S' = `S', `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
+        tempname TMP
+        matrix `TMP' = `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
                     */ `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])
+        mat `S' = `S', `TMP'
         local ifrng inrange(`xvar', `S'[1,5], `S'[1,6])
         if `"`iff'"'!="" local ifrng `"`iff' & `ifrng'"'
         else             local ifrng `"if `ifrng'"'
@@ -1819,10 +1920,10 @@ program Fit_stats, rclass
     qui replace `wlo' = `S'[1,5] in `i'
     qui replace `wup' = `S'[1,6] in `i'
     // returns
-    return scalar blo = `S'[1,3]
-    return scalar bup = `S'[1,4]
-    return scalar wlo = `S'[1,5]
-    return scalar wup = `S'[1,6]
+    return scalar N = e(N)
+    return scalar sum_w = e(W)
+    matrix rown `S' = `xvar'
+    return matrix stats = `S'
 end
 
 program _dscale

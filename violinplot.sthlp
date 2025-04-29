@@ -1,5 +1,5 @@
 {smcl}
-{* 23apr2025}{...}
+{* 29apr2025}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -167,6 +167,10 @@
 {synopt :{cmdab:addplot(}{it:{help addplot_option:plot}}{cmd:)}}add other plots to the graph
     {p_end}
 {synopt :{it:{help twoway_options}}}general options passed through to {helpb graph twoway}
+    {p_end}
+
+{syntab :{help violinplot##reporting:Reporting}}
+{synopt :{opt tab:le}}display table of summary statistics in results window
     {p_end}
 {synoptline}
 {pstd}
@@ -857,6 +861,14 @@
     {it:twoway_options} are general options passed through to {helpb graph twoway}; see
     help {it:{help twoway_options}}.
 
+{marker reporting}{...}
+{dlgtab:Reporting}
+
+{phang}
+    {cmd:table} displays a table in the results window containing summary
+    statistics for each (half) violin (number of observations, bandwidth used
+    for density estimation, mean, median, limits of box, limits of whiskers).
+
 
 {title:Examples}
 
@@ -974,6 +986,14 @@
 {p 8 12 2}
         . {stata violinplot price, over(foreign) vertical fill rag(spread(5) msymbol(o) mcolor(maroon%50) mlcolor(%0))}
         {p_end}
+
+
+{title:Stored results}
+
+{p2colset 5 16 16 2}{...}
+{p2col : {cmd:r(neq)}}number of equations in {cmd:r(table)}{p_end}
+{p2col : {cmd:r(eq}{it:#}{cmd:)}}label of equation {it:#}{p_end}
+{p2col : {cmd:r(table)}}matrix of summary statistics{p_end}
 
 
 {title:References}
