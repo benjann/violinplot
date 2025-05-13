@@ -51,11 +51,11 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 4](/images/4.png)
 
-    violinplot wage, pdf(ll(0)) noline fill(fcolor(%50) lcolor(%100)) over(union) overlay
+    violinplot wage, pdf(ll(0)) noline fill(line) over(union) overlay
 
 ![example 5](/images/5.png)
 
-    violinplot wage ttl_exp tenure, pdf(ll(0)) split(union) key(fill)
+    violinplot wage ttl_exp tenure, pdf(ll(0)) split(union) key(fill) labels("" "Work Experience" "Tenure")
 
 ![example 6](/images/6.png)
 
@@ -64,7 +64,7 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 ![example 7](/images/7.png)
 
     violinplot wage, pdf(ll(0)) over(industry) colors(plasma) fill nobox nowhiskers ///
-        left median(type(line)) dscale(4) bind
+        left pad(0) median(type(line)) dscale(4) bind
 
 ![example 8](/images/8.png)
 
@@ -96,9 +96,32 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 14](/images/14.png)
 
+    violinplot mpg turn, over(foreign) swap nostack vertical nodensity outsides
+
+![example 15](/images/15.png)
+
 ---
 
 Main changes:
+
+    13may2025 (1.2.5)
+    - option -nodensity- added
+    - option -outsides()- added
+    - option -pad()- added; outer padding of 0.5 is now applied by default 
+    - option -range()- now allows limiting the range of the density estimation
+      by the box, whiskers, or custom statistics
+    - suboption -line- added in fill()
+    - type(bar) in box() renamed to type(spike); type(bar) now plots the bars using
+      -rbar- and is now the default if nodensity is specified
+    - type(bar) added in median() and mean()
+    - cap() added in whiskers()
+    - rag(outsides) and rag(boutsides) returned error; this is fixed
+    - definition of legend option is now returned in r(legend)
+    - some changes have been made to how default rendering options are determined
+
+    29apr2025 (1.2.4)
+    - summary statistics of the violins are now stored in r(table)
+    - option -table- displays the summary statistics in the results window
 
     25apr2025 (1.2.3)
     - density estimation is now skipped if display of density curves is suppressed

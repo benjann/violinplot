@@ -1,4 +1,4 @@
-*! version 1.2.4  29apr2025  Ben Jann
+*! version 1.2.5  13may2025  Ben Jann
 
 program violinplot, rclass
     version 15
@@ -8,18 +8,18 @@ program violinplot, rclass
         VERTical HORizontal ///
         Left Right ///
         OVERLay ///
-        ASOver Over(str) ATOver swap noSTack gap(real 0.5) ///
+        ASOver Over(str) ATOver swap noSTack ///
         SPlit(str) ///
         by(str) ///
         DScale(str) ABSolute tight ltight rtight ///
-        RAnge(numlist max=2 missingok) ///
-        n(numlist int >=1 max=1) PDFopts(str) ///
+        RAnge(str) n(numlist int >=1 max=1) PDFopts(str) ///
         qdef(passthru) ///
         cw ///
         LABels(str asis) OLABels(str asis) SLABels(str asis) ///
         BYLABels(str asis) noLABel ///
         key(str) order(str) bind ///
         OFFset(numlist) DOFFset(numlist) ///
+        NODensity ///
         NOLine     Line     Line2(str)     LColors(str asis) ///
         NOFill     Fill     Fill2(str)     FColors(str asis) ///
         NOWhiskers Whiskers Whiskers2(str) WColors(str asis) ///
@@ -27,15 +27,28 @@ program violinplot, rclass
         NOMEDian   MEDian   MEDian2(str)   MEDColors(str asis) ///
         NOMEAN     MEAN     MEAN2(str)     MEANColors(str asis) ///
         NORAG      RAG      RAG2(str)      RAGColors(str asis) ///
+        OUTsides OUTsides2(str) ///
         Colors(str asis) ///
+        gap(real 0.5) pad(numlist max=2 >=0) ///
         PSTYles(numlist int >0) ///
         BYOPTs(str) ///
         addplot(str asis) * ]
+    // outsides() -> rag()
+    if `"`outsides2'"'!="" local outsides outsides
+    if "`outsides'"!="" {
+        if `"`rag'`rag2'"'!="" {
+            di as err "only on of rag() and outsides() allowed"
+            exit 198
+        }
+        local rag2 outsides msymbol(o) `outsides2'
+        local outsides
+        local outsides2
+    }
     // - split()
     _parse_split `split'
     if "`split'"!="" {
         if "`stack'"!="" {
-            di as err "split() and unstack not both allowed"
+            di as err "split() and nostack not both allowed"
             exit 198
         }
         if "`overlay'"!="" {
@@ -93,6 +106,15 @@ program violinplot, rclass
             exit 198
         }
     }
+    // - nodensity
+    if "`nodensity'"!="" {
+        local noline noline
+        local line
+        local line2
+        local nofill nofill
+        local fill
+        local fill2
+    }
     // - fill option; default is nofill (unless noline is specified)
     if "`nofill'"=="" & "`split'"!=""  local fill fill
     else if `"`fill2'"'!=""            local fill fill
@@ -102,7 +124,7 @@ program violinplot, rclass
             exit 198
         }
     }
-    _parse_fill, `fill2'
+    _parse_fill, `fill2' // fill_select, fill_line ... fill2
     // - line option; default is line
     if "`noline'"==""       local line line
     else if `"`line2'"'!="" local line line
@@ -114,52 +136,78 @@ program violinplot, rclass
     }
     else if "`nofill'"=="" local fill fill // set fill on if noline
     // - whiskers option: default is whiskers unless overlay has been specified
-    if "`nowhiskers'`overlay'`split'"=="" local whiskers whiskers
-    if `"`whiskers2'"'!=""                local whiskers whiskers
+    if "`nowhiskers'"=="" {
+        if "`nodensity'"!=""           local whiskers whiskers
+        else if "`overlay'`split'"=="" local whiskers whiskers
+    }
+    if `"`whiskers2'"'!="" local whiskers whiskers
     if "`whiskers'"!="" {
         if "`nowhiskers'"!="" {
             di as err "whiskers and nowhiskers not both allowed"
             exit 198
         }
-        _parse_whisk, `whiskers2' // returns whisk_stat, whiskers2
+        _parse_whisk, `whiskers2' // whisk_stat, whisk_cap ... whiskers2
     }
     // - box option: default is box unless overlay has been specified
-    if "`nobox'`overlay'"=="" local box box
-    if `"`box2'"'!=""         local box box
+    if "`nobox'"=="" {
+        if "`nodensity'"!=""    local box box
+        else if "`overlay'"=="" local box box
+    }
+    if `"`box2'"'!="" local box box
     if "`box'"!="" {
         if "`nobox'"!="" {
             di as err "box and nobox not both allowed"
             exit 198
         }
-        _parse_box, `box2' // returns box_type, box_limits, box_stat, box2
+        _parse_box, `box2' // box_type, box_limits, box_stat ... box2
         if "`box_type'"=="" {
-            if "`split'"!="" local box_type lines
-            else             local box_type bar
+            if "`nodensity'"!=""  local box_type bar
+            else if "`split'"!="" local box_type lines
+            else                  local box_type spike
         }
     }
-    // - median option: default is median
-    if "`nomedian'"==""  local median median
-    if `"`median2'"'!="" local median median
-    if "`median'"!="" {
-        if "`nomedian'"!="" {
-            di as err "median and nomedian not both allowed"
-            exit 198
-        }
-        _parse_med, `median2' // returns median_type, median_stat, median2
-        if "`median_type'"=="" {
-            if "`split'"!="" local median_type line
-            else             local median_type marker
-        }
+    if "`box_BARW'"!="" {
+        if "`split'"!="" local box_BARW = `box_BARW'/2
+        local box_barw barwidth(`box_BARW')
     }
-    // - mean option: default is nomean
-    if `"`mean2'"'!="" local mean mean
-    if "`mean'"!="" {
-        if "`nomean'"!="" {
-            di as err "mean and nomean not both allowed"
-            exit 198
+    else {
+        if "`nodensity'"!="" local box_BARW 0.7
+        else                 local box_BARW = 1/6
+        if "`split'"!=""     local box_BARW = `box_BARW'/2
+    }
+    if "`whiskers'"!="" {
+        if "`box_type'"=="bar" & "`whisk_nocap'"=="" local whisk_cap cap
+        if "`whisk_capw'"=="" {
+            if "`box_type'"=="bar" local whisk_capw = `box_BARW' * .6
+            else if "`split'"!=""  local whisk_capw 0.05
+            else                   local whisk_capw 0.1
         }
-        _parse_mean, `mean2' // returns mean_type, mean_stat, mean2
-        if "`mean_type'"=="" local mean_type marker
+        else if "`split'"!=""      local whisk_capw = `whisk_capw'/2
+    }
+    // - median() and mean(): default is median and nomean
+    if "`nomedian'"=="" local median median
+    foreach el in median mean {
+        if `"``el'2'"'!="" local `el' `el'
+        if "``el''"!="" {
+            if "`no`el''"!="" {
+                di as err "`el' and no`el' not both allowed"
+                exit 198
+            }
+            _parse_med `el', ``el'2' // `el'_type, `el'_stat ... `el'2
+            if "``el'_type'"=="" {
+                if "`el'"=="median" {
+                    if "`box_type'"=="bar" local `el'_type bline
+                    else if "`split'"!=""  local `el'_type line
+                    else                   local `el'_type marker
+                }
+                else local `el'_type marker
+            }
+            if "``el'_type'"=="bline" {
+                if "``el'_BARW'"==""  local `el'_BARW = `box_BARW'
+                else if "`split'"!="" local `el'_BARW = ``el'_BARW'/2
+            }
+            else if "``el'_BARW'"!="" local `el'_barw barwidth(``el'_BARW')
+        }
     }
     // - rag option: default is norag
     if `"`rag2'"'!="" local rag rag
@@ -168,7 +216,7 @@ program violinplot, rclass
             di as err "rag and norag not both allowed"
             exit 198
         }
-        _parse_rag, `rag2' // returns rag_offset, rag_spread, ..., rag2
+        _parse_rag, `rag2' // rag_offset, rag_spread ... rag2
         if "`left'"!="" | "`split'"!="" {
             if "`rag_right'"=="" local rag_left left
         }
@@ -217,16 +265,22 @@ program violinplot, rclass
         }
     }
     else {
-        if "`line'"!="" local key "line"
+        if "`line'"!=""      local key "line"
+        else if "`fill'"!="" local key "fill"
+        else if "`box'"!=""  local key "box"
         else gettoken key : plotlist
     }
     // - further option
     if "`n'"!="" local nopt n(`n')
     _parse_pdfopts, `pdfopts' // extracts -exact- option
-    _parse_range `range' // returns lb ub
+    _parse_range `range' // returns pdf_l pdf_u
     _parse_dscale `dscale' // returns dscale and dstype
     local dscale = `dscale' * 0.5
     if "`tight'"=="" local tight `ltight' `rtight'
+    if "`pad'"=="" {
+        if `dscale'>=. local pad 0
+        else           local pad 0.5
+    }
     local hasaddplot = `"`addplot'"'!=""
     
     // determine whether density estimation is needed
@@ -410,7 +464,6 @@ program violinplot, rclass
     }
     foreach opt in l f w b med mean rag {
         if `"``opt'colors'"'=="" {
-            if "`opt'"=="med" continue // will be handled later
             local `opt'colors `"`colors'"'
             continue
         }
@@ -546,7 +599,7 @@ program violinplot, rclass
     }
     
     // compute results
-    tempname TMP N NOBS STATS BWIDTH
+    tempname TMP N NOBS S STATS BWIDTH
     local preserve preserve
     if `hasaddplot' local r0 = _N // (append results)
     else            local r0 0
@@ -588,10 +641,18 @@ program violinplot, rclass
                         }
                         if `domit' local x_is_cons 1
                         else       local x_is_cons = r(max)==r(min)
+                        // summary stats
+                        Fit_stats `"`stats'"' "`xvar'" `"`wgt'"' `"`iff'"'/*
+                            */ `"`qdef'"' "`box_limits'" `"`whisk_stat'"'/*
+                            */ `"`pdf_l'"' `"`pdf_u'"'
+                        matrix `S' = r(stats)
+                        matrix `STATS' = nullmat(`STATS') \ `S'[1,1..6]
+                        matrix `N'[1,2] = r(sum_w)
+                        matrix `NOBS'  = nullmat(`NOBS') \ `N'
                         // density estimate
                         if !`x_is_cons' {
                             Fit_PDF "`xvar'" `"`wgt'"' `"`iff'"' "`tight'"/*
-                                */ "`lb'" "`ub'" "`exact'" "`nopt'" `"`pdfopts'"'
+                                */ "`S'" "`exact'" "`nopt'" `"`pdfopts'"'
                             local n: colsof e(b)
                             matrix `BWIDTH' = nullmat(`BWIDTH') \ e(bwidth)'
                         }
@@ -623,18 +684,18 @@ program violinplot, rclass
                         // tag start and end of density estimate
                         qui replace `tag' = 1 in `a' // first row
                         qui replace `tag' = 2 in `b' // last row (missing)
-                        // stats
-                        Fit_stats `"`stats'"' "`xvar'" `"`wgt'"' `"`iff'"' `a'/*
-                            */ `avg' `med' `blo' `bup' `wlo' `wup' `"`qdef'"'/*
-                            */ "`box_limits'" `"`whisk_stat'"'
-                        matrix `STATS' = nullmat(`STATS') \ r(stats)
-                        matrix `N'[1,2] = r(sum_w)
-                        matrix `NOBS'  = nullmat(`NOBS')  \ `N'
+                        // store summary stats in data
+                        qui replace `avg' = `S'[1,1] in `a'
+                        qui replace `med' = `S'[1,2] in `a'
+                        qui replace `blo' = `S'[1,3] in `a'
+                        qui replace `bup' = `S'[1,4] in `a'
+                        qui replace `wlo' = `S'[1,5] in `a'
+                        qui replace `wup' = `S'[1,6] in `a'
                         // rag: copy data
                         if "`rag'"!="" {
                             qui replace `rtag' = 1 in `a' // first row
                             mata: _copyrag(`a', `b', "`rag_outsides'", /*
-                                */ "`rag_unique'"!="",  "`wvar'")
+                                */ "`rag_unique'"!="",  "`wvar'", "`S'")
                         }
                         // ids
                         qui replace `varid'   = `i' in `a'/`b'
@@ -743,6 +804,14 @@ program violinplot, rclass
             }
         }
     }
+    // determine (minimum) range of categorical axis
+    if "`pad'"!="0" {
+        su `pos', meanonly
+        gettoken pad0 pad1 : pad
+        gettoken pad1 : pad1
+        if "`pad1'"=="" local pad1 `pad0'
+        local csrange "`=r(min) - `pad0'' `=r(max) + `pad1''"
+    }
     
     // shift and rescale PDFs
     local in "in `=`r0'+1'/`r1'"
@@ -789,8 +858,10 @@ program violinplot, rclass
     if "`split'"!="" {
         if "`split_offset'"!="" local offset `split_offset' // old syntax
         if "`offset'"=="" {
-            // add a default offset of 1% of range of axis in case of split()
-            _get_split_offset `cluspos' `plotpos' // returns offset
+            if "`box_type'"=="bar" local offset = `box_BARW'/2
+            else { // add offset equal to 1% of range of axis
+                _get_split_offset `cluspos' `plotpos' // returns offset
+            }
         }
     }
     if "`rag'"!="" & "`rag_offset'"=="" local rag_offset `offset'
@@ -953,8 +1024,12 @@ program violinplot, rclass
         else if "`left'"!=""  local plt rarea `dlo' `Pos' `at'
         else if "`right'"!="" local plt rarea `Pos' `dup' `at'
         else                  local plt rarea `dlo' `dup' `at'
-        if `"`fill2'"'=="" local finten fintensity(50)
-        else               local finten
+        local OPTS fintensity(100) `fill_fc' `fill_lc' 
+        if `"`fill_fc'"'=="" {
+            if "`overlay'"!="" local OPTS `OPTS' fcolor(%50)
+            else               local OPTS `OPTS' fcolor(*.5)
+        }
+        if `"`fill_line'`fill_lc'"'=="" local OPTS `OPTS' lcolor(%0)
         if "`fill_select'"!="" {
             if "`PID'"=="split" {
                 local plt \`plt\`s''
@@ -983,7 +1058,7 @@ program violinplot, rclass
                             local ++K_fill
                             _getcolr `i' `fcolors'
                             local popts `axes' `rvert' pstyle(p`p') `p_`i''/*
-                                */ lc(%0) `finten' `colr' `fill2' `p_`i'f'
+                                */ `colr' `OPTS' `fill2' `p_`i'f'
                             if !`:list ii in fill_select' local iff 0
                             else {
                                 local iff ``By'id'==`j' & ``CLUS'id'==`c'/*
@@ -1006,8 +1081,8 @@ program violinplot, rclass
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `fcolors'
-                local popts `axes' `rvert' pstyle(p`p') `p_`i'' lc(%0)/*
-                    */ `finten' `colr' `fill2' `p_`i'f'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr' `OPTS'/*
+                    */ `fill2' `p_`i'f'
                 local pfill_`i' (`plt' if ``PID'id'==`i', cmissing(n) `popts')
             }
         }
@@ -1057,25 +1132,42 @@ program violinplot, rclass
     
     // whisker plots
     if "`whiskers'"!="" {
+        local plt1 rspike `wlo' `blo' `POS'
+        local plt2 rspike `bup' `wup' `POS'
+        if "`whisk_cap'"!="" {
+            tempname WPOS0 WPOS1
+            qui gen double `WPOS0' = `POS' - (`whisk_capw'/2)
+            qui gen double `WPOS1' = `POS' + (`whisk_capw'/2)
+            local plt3 rspike `WPOS0' `WPOS1' `wlo'
+            local plt4 rspike `WPOS0' `WPOS1' `wup'
+        }
         local psty `pstyles'
         forv i = 1/`k_`PID'' {
             if "`psty'"=="" local psty `pstyles'
             gettoken p psty : psty
             _getcolr `i' `wcolors'
-            local popts `axes' `rhor' pstyle(p`p') `p_`i'' `colr' `whiskers2'/*
+            local popts `axes' pstyle(p`p') `p_`i'' `colr' `whiskers2'/*
                 */ `p_`i'w'
             local pwhiskers_`i'/*
-                */ (rspike `wlo' `blo' `POS' if ``PID'id'==`i', `popts') /*
-                */ (rspike `bup' `wup' `POS' if ``PID'id'==`i', `popts')
+                */ (`plt1' if ``PID'id'==`i', `rhor' `popts') /*
+                */ (`plt2' if ``PID'id'==`i', `rhor' `popts')
+            if "`whisk_cap'"!="" {
+                local pwhiskers_`i' `pwhiskers_`i''/*
+                    */ (`plt3' if ``PID'id'==`i', `rvert' `popts') /*
+                    */ (`plt4' if ``PID'id'==`i', `rvert' `popts')
+            }
         }
         local K_whiskers = 2 * `k_`PID''
+        if "`whisk_cap'"!="" local K_whiskers = 2 * `K_whiskers'
     }
     
     // box plots
     if "`box'"!="" {
         local K_box `k_`PID''
         local psty `pstyles'
+        local OPTS `box_fc' `box_lp' `box_lw' `box_lc' `box_barw'
         if "`box_type'"=="fill" {
+            local OPTS fintensity(100) `OPTS'
             if "`PID'"=="split" {
                 local plt1 rarea `box_dlo' `Pos' `box_at'
                 local plt2 rarea `Pos' `box_dup' `box_at'
@@ -1084,20 +1176,22 @@ program violinplot, rclass
             else if "`left'"!=""  local plt rarea `box_dlo' `Pos' `box_at'
             else if "`right'"!="" local plt rarea `Pos' `box_dup' `box_at'
             else                  local plt rarea `box_dlo' `box_dup' `box_at'
-            if `"`box2'"'=="" local finten fintensity(50)
-            else              local finten
+            if `"`box_fc'"'=="" {
+                if "`overlay'"!="" local OPTS `OPTS' fcolor(%50)
+                else               local OPTS `OPTS' fcolor(*.5)
+            }
+            if `"`box_lc'"'=="" local OPTS `OPTS' lcolor(%0)
             forv i = 1/`K_box' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `bcolors'
-                local popts `axes' `rvert' pstyle(p`p') `p_`i'' lc(%0)/*
-                    */ `finten' `colr' `box2' `p_`i'b'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr' `OPTS'/*
+                    */ `box2' `p_`i'b'
                 local pbox_`i' (`plt' if ``PID'id'==`i', cmissing(n) `popts')
             }
         }
         else if "`box_type'"=="lines" {
-            if `"`box2'"'=="" local lpopt lpattern(-)
-            else              local lpopt
+            if `"`box_lp'"'=="" local OPTS `OPTS' lpattern(-)
             if "`PID'"=="split" {
                 local plt1 rspike `box_dlo' `Pos' `box_at'
                 local plt2 rspike `box_dup' `Pos' `box_at'
@@ -1110,112 +1204,110 @@ program violinplot, rclass
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `bcolors'
-                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `lpopt' `colr'/*
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr' `OPTS'/*
                     */ `box2' `p_`i'b'
                 local pbox_`i' (`plt' if ``PID'id'==`i', `popts')
             }
         }
         else {
-            if `"`box2'"'=="" local boxwd lw(vthick)
-            else              local boxwd
+            if "`box_type'"=="bar" {
+                local OPTS fintensity(100) `OPTS'
+                local plt rbar `blo' `bup' `POS'
+                if `"`box_fc'"'=="" {
+                    if "`overlay'"!="" local OPTS `OPTS' fcolor(%50)
+                    else               local OPTS `OPTS' fcolor(*.5)
+                }
+                if `"`box_barw'"'=="" local OPTS `OPTS' barwidth(`box_BARW')
+            }
+            else {
+                local plt rspike `blo' `bup' `POS'
+                if `"`box_lw'"'=="" local OPTS `OPTS' lwidth(vthick)
+            }
             forv i = 1/`K_box' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
                 _getcolr `i' `bcolors'
-                local popts `axes' `rhor' pstyle(p`p') `p_`i'' `boxwd' `colr'/*
+                local popts `axes' `rhor' pstyle(p`p') `p_`i'' `colr' `OPTS'/*
                     */ `box2' `p_`i'b'
-                local pbox_`i'/*
-                    */ (rspike `blo' `bup' `POS' if ``PID'id'==`i', `popts')
+                local pbox_`i' (`plt' if ``PID'id'==`i', `popts')
             }
         }
     }
     
-    // median plots
-    if "`median'"!="" {
-        local K_median `k_`PID''
+    // median/mean plots
+    foreach el in median mean {
+        if "`el'"=="mean" {
+            local EL avg
+            local eL mean
+        }
+        else {
+            local EL med
+            local eL med
+        }
+        if "``el''"=="" continue
+        local K_`el' `k_`PID''
         local psty `pstyles'
-        if "`median_type'"=="line" {
+        local OPTS ``el'_msymb' ``el'_msize' ``el'_msang' ``el'_mc' ``el'_barw'
+        if "``el'_type'"=="line" {
             if "`PID'"=="split" {
-                local plt1 rspike `med_dlo' `Pos' `med'
-                local plt2 rspike `med_dup' `Pos' `med'
+                local plt1 rspike ``EL'_dlo' `Pos' ``EL''
+                local plt2 rspike ``EL'_dup' `Pos' ``EL''
                 local plt \`plt\`i''
             }
-            else if "`left'"!=""   local plt rspike `med_dlo' `Pos' `med'
-            else if "`right'"!=""  local plt rspike `Pos' `med_dup' `med'
-            else                   local plt rspike `med_dlo' `med_dup' `med'
-            if `"`medcolors'"'=="" local medcolors `"`colors'"'
-            forv i = 1/`K_median' {
+            else if "`left'"!=""   local plt rspike ``EL'_dlo' `Pos' ``EL''
+            else if "`right'"!=""  local plt rspike `Pos' ``EL'_dup' ``EL''
+            else                   local plt rspike ``EL'_dlo' ``EL'_dup' ``EL''
+            forv i = 1/`K_`el'' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
-                _getcolr `i' `medcolors'
-                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr'/*
-                    */ `median2' `p_`i'med'
-                local pmedian_`i' (`plt' if ``PID'id'==`i', `popts')
+                _getcolr `i' ``eL'colors'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr' `OPTS'/*
+                    */ ``el'2' `p_`i'`eL''
+                local p`el'_`i' (`plt' if ``PID'id'==`i', `popts')
+            }
+        }
+        else if "``el'_type'"=="bline" {
+            tempname `EL'POS0 `EL'POS1
+            qui gen double ``EL'POS0' = `POS' - (``el'_BARW'/2)
+            qui gen double ``EL'POS1' = `POS' + (``el'_BARW'/2)
+            local plt rspike ``EL'POS0' ``EL'POS1' ``EL''
+            forv i = 1/`K_`el'' {
+                if "`psty'"=="" local psty `pstyles'
+                gettoken p psty : psty
+                _getcolr `i' ``eL'colors'
+                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr' `OPTS'/*
+                    */ ``el'2' `p_`i'`eL''
+                local p`el'_`i' (`plt' if ``PID'id'==`i', `popts')
             }
         }
         else {
-            if "`vertical'"!=""  local vlist `med' `POS'
-            else                 local vlist `POS' `med'
-            if `"`median2'"'!="" | "`box_type'"!="bar" {
-                local msym
-                if `"`medcolors'"'=="" local medcolors `"`colors'"'
-            }
-            else {
-                local msym msymbol(O) msize(vsmall)
-                if `"`medcolors'"'=="" {
-                    mata: st_local("medcolors", /*
-                        */ invtokens(J(1,`K_median',"white")))
+            if "`el'"=="mean" {
+                if `"`mean_msymb'"'=="" {
+                    if "`box_type'"=="spike" {
+                        local OPTS `OPTS' msymbol(pipe)
+                        if `"`mean_msize'"'=="" local OPTS `OPTS' msize(huge)
+                        if "`vertical'"!="" & `"`mean_msang'"'==""/*
+                            */ local OPTS `OPTS' msangle(90)
+                    }
+                    else local OPTS `OPTS' msymbol(X)
                 }
             }
-            forv i = 1/`K_median' {
+            else {
+                if "`box_type'"=="spike" {
+                    if `"`median_msymb'"'=="" local OPTS `OPTS' msymbol(O)
+                    if `"`median_msize'"'=="" local OPTS `OPTS' msize(vsmall)
+                    if `"`median_mc'"'==""    local OPTS `OPTS' mcolor(white)
+                }
+            }
+            if "`vertical'"!="" local vlist ``EL'' `POS'
+            else                local vlist `POS' ``EL''
+            forv i = 1/`K_`el'' {
                 if "`psty'"=="" local psty `pstyles'
                 gettoken p psty : psty
-                _getcolr `i' `medcolors'
-                local popts `axes' pstyle(p`p') `p_`i'' `msym' `colr'/*
-                    */ `median2' `p_`i'med'
-                local pmedian_`i' (scatter `vlist' if ``PID'id'==`i', `popts')
-            }
-        }
-    }
-    
-    // mean plots
-    if "`mean'"!="" {
-        local K_mean `k_`PID''
-        local psty `pstyles'
-        if "`mean_type'"=="line" {
-            if "`PID'"=="split" {
-                local plt1 rspike `avg_dlo' `Pos' `avg'
-                local plt2 rspike `avg_dup' `Pos' `avg'
-                local plt \`plt\`i''
-            }
-            else if "`left'"!=""  local plt rspike `avg_dlo' `Pos' `avg'
-            else if "`right'"!="" local plt rspike `Pos' `avg_dup' `avg'
-            else                  local plt rspike `avg_dlo' `avg_dup' `avg'
-            forv i = 1/`K_mean' {
-                if "`psty'"=="" local psty `pstyles'
-                gettoken p psty : psty
-                _getcolr `i' `meancolors'
-                local popts `axes' `rvert' pstyle(p`p') `p_`i'' `colr'/*
-                    */ `mean2' `p_`i'mean'
-                local pmean_`i' (`plt' if ``PID'id'==`i', `popts')
-            }
-        }
-        else {
-            if "`PID'"!="split" local msopts msymbol(pipe) msize(huge)
-            else                local msopts msymbol(x)
-            if "`vertical'"!="" {
-                local vlist `avg' `POS'
-                if "`PID'"!="split" local msopts `msopts' msangle(90)
-            }
-            else local vlist `POS' `avg'
-            if `"`mean2'"'!="" local msopts
-            forv i = 1/`K_mean' {
-                if "`psty'"=="" local psty `pstyles'
-                gettoken p psty : psty
-                _getcolr `i' `meancolors'
-                local popts `axes' pstyle(p`p') `p_`i'' `msopts' `colr'/*
-                    */ `mean2' `p_`i'mean'
-                local pmean_`i' (scatter `vlist' if ``PID'id'==`i', `popts')
+                _getcolr `i' ``eL'colors'
+                local popts `axes' pstyle(p`p') `p_`i'' `colr' `OPTS'/*
+                    */ ``el'2' `p_`i'`eL''
+                local p`el'_`i' (scatter `vlist' if ``PID'id'==`i', `popts')
             }
         }
     }
@@ -1224,18 +1316,20 @@ program violinplot, rclass
     if "`rag'"!="" {
         local K_rag `k_`PID''
         local psty `pstyles'
-        local msopts msymbol(pipe)
-        if "`vertical'"!="" {
-            local vlist `xrag' `RPOS'
-            local msopts `msopts' msangle(90)
+        local OPTS `rag_msymb' `rag_msang'
+        if `"`rag_msymb'"'=="" {
+            local OPTS `OPTS' msymbol(pipe)
+            if "`vertical'"!="" & `"`rag_msang'"'==""/*
+                */ local OPTS `OPTS' msangle(90)
         }
-        else local vlist `RPOS' `xrag'
+        if "`vertical'"!="" local vlist `xrag' `RPOS'
+        else                local vlist `RPOS' `xrag'
         forv i = 1/`K_rag' {
             if "`psty'"=="" local psty `pstyles'
             gettoken p psty : psty
             _getcolr `i' `ragcolors'
-            local popts `axes' pstyle(p`p') `p_`i'' `msopts' `colr'/*
-                */ `rag2' `p_`i'rag'
+            local popts `axes' pstyle(p`p') `p_`i'' `OPTS' `colr' `rag2'/*
+                */ `p_`i'rag'
             local prag_`i' (scatter `vlist' `ragwgt' if ``PID'id'==`i', `popts')
         }
     }
@@ -1250,7 +1344,10 @@ program violinplot, rclass
                 local plots `plots' `p`el'_`i''
                 local ++nkeys
                 if "`key'"=="`el'" local ikeys `ikeys' `nkeys'
-                if "`el'"=="whiskers" local ++nkeys
+                if "`el'"=="whiskers" {
+                    local ++nkeys
+                    if "`whisk_cap'"!="" local nkeys = `nkeys' + 2
+                }
             }
         }
     }
@@ -1263,7 +1360,10 @@ program violinplot, rclass
                 forv i = 1/`k_`PID'' {
                     local ++nkeys
                     local ikeys `ikeys' `nkeys'
-                    if "`el'"=="whiskers" local ++nkeys
+                    if "`el'"=="whiskers" {
+                        local ++nkeys
+                        if "`whisk_cap'"!="" local nkeys = `nkeys' + 2
+                    }
                 }
             }
             else local nkeys = `nkeys' + `K_`el''
@@ -1347,6 +1447,10 @@ program violinplot, rclass
             }
         }
     }
+    if "`pad'"!="0" {
+        if "`vertical'"!="" local ylabels `ylabels' xscale(range(`csrange'))
+        else                local ylabels `ylabels' yscale(range(`csrange'))
+    }
     
     // compile legend option
     local legend
@@ -1419,6 +1523,7 @@ program violinplot, rclass
     forv eq = `neq'(-1)1 {
         return local eq`eq' `"`EQ`eq''"'
     }
+    return local legend `"`legend'"'
     return matrix table = `STATS'
 end
 
@@ -1469,13 +1574,16 @@ program _parse_split
 end
 
 program _parse_fill
-    syntax [, Select(numlist int >0) *]
+    syntax [, Select(numlist int >0) Line FColor(passthru) LColor(passthru) * ]
     c_local fill_select `select'
-    c_local fill2 `options'
+    c_local fill_line   `line'
+    c_local fill_fc     `fcolor'
+    c_local fill_lc     `lcolor'
+    c_local fill2       `options'
 end
 
 program _parse_whisk
-    syntax [, Statistics(str) * ]
+    syntax [, Statistics(str) NOCAP cap CAP2(numlist max=1) * ]
     if `"`statistics'"'!="" {
         _parse_stats `statistics' // stats, nstats
         if `nstats'>2 {
@@ -1487,12 +1595,22 @@ program _parse_whisk
             exit 198
         }
     }
+    if "`cap2'"!="" local cap cap
+    if "`cap'"!="" & "`nocap'"!="" {
+        di as err "whiskers(): cap and nocap not both allowed"
+        exit 198
+    }
     c_local whisk_stat `"`stats'"'
-    c_local whiskers2 `options'
+    c_local whisk_nocap `nocap'
+    c_local whisk_cap   `cap'
+    c_local whisk_capw  `cap2'
+    c_local whiskers2   `options'
 end
 
 program _parse_box
-    syntax [, Statistics(str) Type(str) LIMits(numlist max=2 missingok) * ]
+    syntax [, Statistics(str) Type(str) LIMits(numlist max=2 missingok)/*
+        */ FColor(passthru) LPattern(passthru) LWidth(passthru)/*
+        */ LColor(passthru) BARWidth(numlist max=1) * ]
     capt n _parse_box_type, `type'
     if _rc {
         di as err "error in option box(type())"
@@ -1510,14 +1628,19 @@ program _parse_box
         }
     }
     c_local box_limits "`limits'"
-    c_local box_stat `"`stats'"'
-    c_local box_type `type'
-    c_local box2 `options'
+    c_local box_stat   `"`stats'"'
+    c_local box_type   `type'
+    c_local box_fc     `fcolor'
+    c_local box_lp     `lpattern'
+    c_local box_lw     `lwidth'
+    c_local box_lc     `lcolor'
+    c_local box_BARW   `barwidth'
+    c_local box2       `options'
 end
 
 program _parse_box_type
-    syntax [, Bar Fill Lines ]
-    local type `bar' `fill' `lines'
+    syntax [, SPike Bar Fill Lines ]
+    local type `spike' `bar' `fill' `lines'
     if `:list sizeof type'>1 {
         di as err "too many types specified"
         exit 198
@@ -1526,42 +1649,32 @@ program _parse_box_type
 end
 
 program _parse_med
-    syntax [, Statistic(str) Type(str) * ]
+    gettoken med 0 : 0, parse(,)
+    syntax [, Statistic(str) Type(str) Msymbol(passthru) MSIze(passthru)/*
+        */ MSAngle(passthru) MColor(passthru) BARWidth(numlist max=1) * ]
     capt n _parse_med_type, `type'
     if _rc {
-        di as err "error in option median(type())"
+        di as err "error in option `med'(type())"
         exit _rc
     }
     _parse_stats `statistic' // stats, nstat
     if `nstats'>1 {
-        di as err "median(statistic()): only one statistic allowed"
+        di as err "`med'(statistic()): only one statistic allowed"
         exit 198
     }
-    c_local median_stat `"`stats'"'
-    c_local median_type `type'
-    c_local median2     `options'
-end
-
-program _parse_mean
-    syntax [, Statistic(str) Type(str) * ]
-    capt n _parse_med_type, `type'
-    if _rc {
-        di as err "error in option mean(type())"
-        exit _rc
-    }
-    _parse_stats `statistic' // stats, nstat
-    if `nstats'>1 {
-        di as err "mean(statistic()): only one statistic allowed"
-        exit 198
-    }
-    c_local mean_stat `"`stats'"'
-    c_local mean_type `type'
-    c_local mean2     `options'
+    c_local `med'_stat  `"`stats'"'
+    c_local `med'_type  `type'
+    c_local `med'_msymb `msymbol'
+    c_local `med'_msize `msize'
+    c_local `med'_msang `msangle'
+    c_local `med'_mc    `mcolor'
+    c_local `med'_BARW  `barwidth'
+    c_local `med'2      `options'
 end
 
 program _parse_med_type
-    syntax [, Marker Line ]
-    local type `marker' `line'
+    syntax [, Marker Bline Line  ]
+    local type `marker' `bline' `line'
     if `:list sizeof type'>1 {
         di as err "too many types specified"
         exit 198
@@ -1594,7 +1707,8 @@ program _parse_rag
         */ SPread SPread2(numlist max=2 missingokay)/*
         */ STack STack2(str)/*
         */ Left Right/*
-        */ BOUTsides OUTsides * ]
+        */ BOUTsides OUTsides/*
+        */ Msymbol(passthru) MSAngle(passthru) * ]
     // spread
     if "`spread'`spread2'"!="" {
         if `"`stack'`stack2'"'!="" {
@@ -1651,6 +1765,8 @@ program _parse_rag
     c_local rag_left     `left'
     c_local rag_right    `right'
     c_local rag_outsides `outsides'
+    c_local rag_msymb    `msymbol'
+    c_local rag_msang    `msangle'
     c_local rag2         `options'
 end
 
@@ -1699,21 +1815,20 @@ program _parse_pdfopts
 end
 
 program _parse_range
-    args lb ub
-    if "`lb'"!="" {
-        if `lb'>=. local lb
+    if `"`0'"'=="box" local 0 box_l box_u
+    if `"`0'"'==substr("whiskers",1,max(4,strlen(`"`0'"')))/*
+        */ local 0 whisk_l whisk_u
+    _parse_stats `0' // stats, nstat
+    if `nstats'>2 {
+        di as err "rage() invalid -- too many elements"
+        exit 198
     }
-    if "`ub'"!="" {
-        if `ub'>=. local ub
-    }
-    if "`lb'"!="" & "`ub'"!="" {
-        if `lb'>`ub' {
-            di as err "range() invalid -- elements out of order"
-            exit 198
-        }
-    }
-    c_local lb `lb'
-    c_local ub `ub'
+    gettoken lb stats : stats
+    gettoken ub       : stats
+    if `"`lb'"'=="." local lb
+    if `"`ub'"'=="." local ub
+    c_local pdf_l `"`lb'"'
+    c_local pdf_u `"`ub'"'
 end
 
 program _parse_dscale
@@ -1850,20 +1965,24 @@ program _addobs
 end
 
 program Fit_PDF
-    tempname ll ul wd0 wd
-    args xvar wgt iff tight lb ub exact n pdfopts
+    tempname ll ul wd0 lb ub wd
+    args xvar wgt iff tight S exact n pdfopts
     qui dstat pdf `xvar' `iff' `wgt', nose noheader notable/*
         */ `tight' `exact' `n' `pdfopts'
     local n: colsof e(b)
     scalar `ll' = el(e(at),1,1)
     scalar `ul' = el(e(at),1,`n')
     scalar `wd0' = `ul' - `ll'
-    if "`lb'"!="" {
+    scalar `lb' = `S'[1,7]
+    scalar `ub' = `S'[1,8]
+    if `lb'<. {
+        if `lb'>`ub' { // swap
+            scalar `lb' = `S'[1,8]
+            scalar `ub' = `S'[1,7]
+        }
         if `lb'>`ll' scalar `ll' = `lb'
     }
-    if "`ub'"!="" {
-        if `ub'<`ul' scalar `ul' = `ub'
-    }
+    if `ub'<`ul'     scalar `ul' = `ub'
     scalar `wd' = `ul' - `ll'
     if `wd'!=`wd0' {
         if `wd'/`wd0' < 0.5 local exact exact
@@ -1876,40 +1995,64 @@ program Fit_PDF
 end
 
 program Fit_stats, rclass
-    args stats xvar wgt iff i avg med blo bup wlo wup qdef box_limits whisk
+    args stats xvar wgt iff qdef box_limits whisk pdf_l pdf_u
+    // compile list of target statistics
+    local nstats 4
+    local haswhisk 0
     if `"`whisk'"'!="" {
         local stats `"`stats' `whisk'"'
-        local nstats 6
+        local nstats = `nstats' + 2
+        local haswhisk 1
     }
-    else local nstats 4
+    foreach l in l u {
+        local haspdf_`l' 0
+        if `"`pdf_`l''"'=="" continue
+        if inlist(`"`pdf_`l''"',"box_l","box_u","whisk_l","whisk_u") continue
+        capt confirm number `pdf_`l''
+        if !_rc continue
+        local stats `"`stats' `pdf_`l''"'
+        local ++nstats
+        local haspdf_`l' 1
+    }
     if `"`:list dups stats'"'!="" local noclean noclean
     else                          local noclean
+    // compute statistics
     qui dstat (`stats') `xvar' `iff' `wgt', nose noheader notable/*
         */ `noclean' `qdef'
-    tempname S
-    mat `S' = e(b)
-    if colsof(`S')!=`nstats' {
+    // copy results
+    tempname b S
+    matrix `b' = e(b)
+    if colsof(`b')!=`nstats' {
         di as err "unexpected error; wrong number of summary statistics computed"
         exit 499
     }
-    if "`box_limits'"!="" { // override limits of box
+    matrix `S' = J(1,8,.)
+    local nstats 4
+    matrix `S'[1,1] = `b'[1,1..4]
+    if `haswhisk' {
+        local nstats 6
+        matrix `S'[1,5] = `b'[1,5..6]
+    }
+    local j 6
+    foreach l in l u {
+        local ++j
+        if !`haspdf_`l'' continue
+        local ++nstats
+        matrix `S'[1,`j'] = `b'[1,`nstats']
+    }
+    // apply limits() to box
+    if "`box_limits'"!="" { 
         local j 2
-        foreach lim of local box_limits {
+        foreach l of local box_limits {
             local ++j
-            if `lim'>=. continue
-            mat `S'[1,`j'] = `lim'
+            if `l'>=. continue
+            mat `S'[1,`j'] = `l'
         }
     }
-    qui replace `avg' = `S'[1,1] in `i'
-    qui replace `med' = `S'[1,2] in `i'
-    qui replace `blo' = `S'[1,3] in `i'
-    qui replace `bup' = `S'[1,4] in `i'
     // whiskers
-    if `nstats'==4 {
-        tempname TMP
-        matrix `TMP' = `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3]), /*
-                    */ `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])
-        mat `S' = `S', `TMP'
+    if !`haswhisk' {
+        matrix `S'[1,5] = `S'[1,3]-1.5*(`S'[1,4]-`S'[1,3])
+        matrix `S'[1,6] = `S'[1,4]+1.5*(`S'[1,4]-`S'[1,3])
         local ifrng inrange(`xvar', `S'[1,5], `S'[1,6])
         if `"`iff'"'!="" local ifrng `"`iff' & `ifrng'"'
         else             local ifrng `"if `ifrng'"'
@@ -1917,8 +2060,18 @@ program Fit_stats, rclass
         mat `S'[1,5] = r(min)
         mat `S'[1,6] = r(max)
     }
-    qui replace `wlo' = `S'[1,5] in `i'
-    qui replace `wup' = `S'[1,6] in `i'
+    // pdf range
+    local j 0
+    foreach l in l u {
+        local ++j
+        if `haspdf_`l''      continue
+        if `"`pdf_`l''"'=="" continue
+        if      `"`pdf_`l''"'=="box_l"   matrix `S'[1,6+`j'] = `S'[1,3]
+        else if `"`pdf_`l''"'=="box_u"   matrix `S'[1,6+`j'] = `S'[1,4]
+        else if `"`pdf_`l''"'=="whisk_l" matrix `S'[1,6+`j'] = `S'[1,5]
+        else if `"`pdf_`l''"'=="whisk_u" matrix `S'[1,6+`j'] = `S'[1,6]
+        else                             matrix `S'[1,6+`j'] = `pdf_`l''
+    }
     // returns
     return scalar N = e(N)
     return scalar sum_w = e(W)
@@ -1952,11 +2105,12 @@ mata:
 mata set matastrict on
 
 void _copyrag(real scalar a, real scalar b, string scalar out,
-    real scalar uniq, string scalar wvar)
+    real scalar uniq, string scalar wvar, string scalar S)
 {
     real scalar    n, wmean, wrag
+    real rowvector lim
     real colvector x, w, p
-    
+
     // get data
     x = st_data(., st_local("xvar"), st_local("tousej"))
     x = x[p = selectindex(x:<.)]
@@ -1969,14 +2123,18 @@ void _copyrag(real scalar a, real scalar b, string scalar out,
         else          x = mm_unique(x)
     }
     if (out!="") {
-        p = selectindex(x:<st_numscalar("r("+out+"lo)") :|
-                        x:>st_numscalar("r("+out+"up)"))
+        if (out=="b") lim = st_matrix(S)[(3,4)]
+        else          lim = st_matrix(S)[(5,6)]
+        p = selectindex(x:<lim[1] :| x:>lim[2])
         if (!length(p)) p = J(0,1,.)
         x = x[p]
         if (wvar!="") w = w[p]
     }
     n = rows(x)
-    if (!n) return // nothing to store
+    if (!n) { // nothing to store
+        _st_store(a+1, st_varindex(st_local("rtag")), 2) // tag last row
+        return
+    }
     // reorder data in case of weights (so that large dots will be at the back)
     if (wvar!="") {
         p = order((w,(1::n)), (-1,2)) // keep original order within ties
@@ -2075,6 +2233,7 @@ void _rag_stack(real scalar a0, real scalar b0, real scalar typ,
     idx = _get_index(a0, b0, "rtag", 2)
     D   = J(b0-a0+1,1,.)
     for (j=rows(idx);j;j--) {
+        if (idx[j,1]>idx[j,2]) continue // no data
         if (dir) sgn = (-1)^(_st_data(idx[j,1], spid)!=1) * dir
         else     sgn = 0
         st_view(X=., idx[j,], xrag)
@@ -2149,6 +2308,7 @@ void _rag_spread(real scalar a0, real scalar b0, real scalar s1, real scalar s2,
     st_view(D=., ., st_varindex(st_local("RPOS")))
     for (j=rows(idx);j;j--) {
         n = idx[j,2] - idx[j,1] + 1
+        if (!n) continue
         if (dir) sgn = (-1)^(_st_data(idx[j,1], spid)!=1) * dir
         if (wrag<. | s2>=.) st_view(X=., idx[j,], xrag)
         if (wrag<.) a = rowmin((J(n,1,1e5),rowmax((J(n,1,1),
@@ -2244,7 +2404,7 @@ real matrix _get_index(real scalar a, real scalar b, string scalar tag,
     real scalar offset) // returns indices of start and end of each result
 {
     real scalar t
-    
+
     t = st_varindex(st_local(tag))
     return((a-1) :+ (selectindex(st_data((a,b), t):==1),
                      selectindex(st_data((a,b), t):==2) :- offset))

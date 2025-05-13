@@ -1,5 +1,5 @@
 {smcl}
-{* 29apr2025}{...}
+{* 13may2025}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -57,8 +57,6 @@
     {p_end}
 {synopt :{opt nost:ack}}do not use stacked axis labels, use a legend
     {p_end}
-{synopt :{opt gap(#)}}size of extra gap between groups of results; default is 0.5
-    {p_end}
 {synopt :{cmdab:sp:lit(}{it:{help violinplot##split:varname}}{cmd:)}}create half
     violins
     {p_end}
@@ -74,7 +72,7 @@
     {p_end}
 {synopt :[{cmd:l}|{cmd:r}]{cmd:tight}}use tight density evaluation grid
     {p_end}
-{synopt :{cmdab:ra:nge(}{it:{help violinplot##range:spec}}{cmd:)}}restrict maximum
+{synopt :{cmdab:ra:nge(}{it:{help violinplot##range:spec}}{cmd:)}}restrict
     density evaluation range
     {p_end}
 {synopt :{opt n(#)}}size of evaluation grid; default is {cmd:n(99)}
@@ -104,6 +102,8 @@
     {p_end}
 
 {syntab :{help violinplot##elements:Elements}}
+{synopt :{opt nod:ensity}}omit the PDF and draw box plots only
+    {p_end}
 {synopt :[{ul:{cmd:no}}]{cmdab:l:ine}[{cmd:(}{it:{help violinplot##line:options}}{cmd:)}]}whether
     PDF lines are printed; rendering of PDF lines
     {p_end}
@@ -125,10 +125,13 @@
 {synopt :{cmd:rag}[{cmd:(}{it:{help violinplot##rag:options}}{cmd:)}]}add markers for data points;
     rendering of the rag
     {p_end}
+{synopt :{cmdab:out:sides}[{cmd:(}{it:{help violinplot##outsides:options}}{cmd:)}]}display outside values;
+    wrapper for {cmd:rag()}
+    {p_end}
 {synopt :{cmdab:ord:er(}{it:{help violinplot##order:list}}{cmd:)}}change order in which
     elements are printed
     {p_end}
-{synopt :{opt bind}}print elements together within plot
+{synopt :{opt bind}}bind elements together within plot
     {p_end}
 {synopt :{opth off:set(numlist)}}shift position of box plot (and rag)
     {p_end}
@@ -155,13 +158,17 @@
     {p_end}
 
 {syntab :{help violinplot##other:Other}}
+{synopt :{opt gap(#)}}size of extra gap between groups of results; default is 0.5
+    {p_end}
+{synopt :{opt pad(# [#])}}size of outer padding; default is 0.5
+    {p_end}
 {synopt :{cmdab:psty:les(}{it:{help violinplot##pstyles:numlist}}{cmd:)}}assign plot styles to results
     {p_end}
-{synopt :{cmd:p}{it:#}{cmd:(}{it:{help violinplot##pnum:options}}{cmd:)}}options passed through to #th result (within group)
+{synopt :{cmd:p}{it:#}{cmd:(}{it:{help violinplot##pnum:options}}{cmd:)}}pass options through to #th result (within group)
     {p_end}
-{synopt :{cmd:p}{it:#}{it:el}{cmd:(}{it:{help violinplot##pnumel:options}}{cmd:)}}options passed through to element of #th result (within group)
+{synopt :{cmd:p}{it:#}{it:el}{cmd:(}{it:{help violinplot##pnumel:options}}{cmd:)}}pass options through to specific element of #th result (within group)
     {p_end}
-{synopt :{cmdab:byopt:s(}{it:{help violinplot##byopts:byopts}}{cmd:)}}options passed through
+{synopt :{cmdab:byopt:s(}{it:{help violinplot##byopts:byopts}}{cmd:)}}pass options through
     to {helpb by_option:by()}
     {p_end}
 {synopt :{cmdab:addplot(}{it:{help addplot_option:plot}}{cmd:)}}add other plots to the graph
@@ -310,13 +317,6 @@
     categories. {cmd:nostack} also assigns different plot styles to the
     results. {cmd:nostack} is not allowed if {cmd:split()} is specified.
 
-{phang}
-    {opt gap(#)} specifies the size of the extra gap inserted between clusters of
-    results that are grouped together within the same subgraph. This is only relevant
-    if there are multiple outcome variables and multiple over categories (and if {cmd:overlay} is
-    not specified). The default extra gap is 0.5 (i.e. half the size of the space
-    each result consumes).
-
 {marker split}{...}
 {phang}
     {opth split(varname)} splits the violins
@@ -391,11 +391,25 @@
 
 {marker range}{...}
 {phang}
-    {cmd:range(}{it:from} [{it:to}]{cmd:)} limits the maximum range across which
+    {cmd:range(}{it:from} [{it:to}]{cmd:)} limits the (maximum) range across which
     the PDF will be evaluated. This may be useful if there are outliers in the
-    data and you want to clip the display to the main part of the data. {it:from}
-    can be specified as {cmd:.} (missing) to set no lower limit; {it:to} can be
-    omitted or specified as {cmd:.} (missing) to set no upper limit.
+    data and you want to clip the display to the main part of the data. Arguments
+    {it:from} and {it:to} may be as follows.
+
+{p2colset 13 22 24 2}{...}
+{p2col:{cmd:.}}no limit{p_end}
+{p2col:{it:#}}limit by fixed value {it:#}{p_end}
+{p2col:{cmd:box_l}}limit by lower value of box{p_end}
+{p2col:{cmd:box_u}}limit by upper value of box{p_end}
+{p2col:{cmd:whisk_l}}limit by lower value of whiskers{p_end}
+{p2col:{cmd:whisk_u}}limit by upper value of whiskers{p_end}
+{p2col:{it:stat}}limit by value of {it:stat}, where {it:stat} is any statistic
+    allowed by {helpb dstat##stats:dstat} (e.g. {cmd:p1} or {cmd:p99}){p_end}
+
+{pmore}
+    {cmd:range(box)} can be used as shorthand for {cmd:range(box_l box_u)};
+    {cmd:range(}{cmdab:whisk:ers}{cmd:)} can be used as shorthand for
+    {cmd:range(whisk_l whisk_u)}.
 
 {pmore}
     By default, fast density estimation based on an approximation grid is used
@@ -457,12 +471,21 @@
     keys. This is only relevant in cases in which a legend is
     displayed. Depending on context, {it:element} is one of {cmdab:l:ine},
     {cmdab:f:ill}, {cmdab:w:hiskers}, {cmdab:b:ox}, {cmdab:med:ian}, {cmd:mean},
-    or {cmd:rag} (elements that are not plotted will not be available). The default is
-    {cmd:key(line)} or, if option {cmd:noline} has been specified, the element
-    that is plotted first.
+    or {cmd:rag} (elements that are not plotted will not be available). If
+    element {cmd:line} is plotted the default is {cmd:key(line)}, else if
+    element {cmd:fill} is plotted the default is {cmd:key(fill)}, else if
+    element {cmd:box} is plotted the default is {cmd:key(box)}, else the
+    default is the element hat is plotted first (backmost).
 
 {marker elements}{...}
 {dlgtab:Elements}
+
+{phang}
+    {cmd:nodensity} omits the PDF lines and fill and changes default behavior
+    for some of the other elements. Use this option if you want to draw box plots
+    rather than violin plots. Specifying {cmd:nodensity} has the same effect
+    as typing {cmd:noline}, {cmd:nofill}, {cmd:box(type(bar) barwidth(.7))}, and
+    {cmd:whiskers}.
 
 {marker line}{...}
 {phang}
@@ -487,19 +510,30 @@
     {cmd:noline} is specified.
 
 {phang2}
+    {opt l:ine} displays the outline around the shading. By default the outline is
+    suppressed. If you want to display the outline without shading, type
+    {cmd:fill(line fcolor(none))}.
+
+{phang2}
     {it:area_options} are graph options affecting the rendering
-    of the shading; see help {it:{help area_options}}. By default, option {cmd:fintensity(50)} is applied
-    to the shading; this is skipped if any {it:area_options} are
-    specified. Furthermore, option {cmd:lcolor(%0)} is applied, which will not
-    be skipped; specify, e.g., {cmd:fill(lcolor(%100)} to override this
-    setting.
+    of the shading (and the outline); see help {it:{help area_options}}. By default,
+    option {cmd:fcolor(*.5)} or, if {cmd:overlay} has been specified,
+    {cmd:fcolor(%50)} is applied to the shading,
 
 {marker whiskers}{...}
 {phang}
     [{cmd:no}]{cmdab:whiskers}[{cmd:(}{it:options}{cmd:)}] determines
     whether the whiskers are printed or not. The default is to print the whiskers
-    unless {cmd:overlay} or {cmd:split()} is specified. {it:options}
-    are as follows.
+    unless {cmd:overlay} or {cmd:split()} is specified (and {cmd:nodensity} is
+    not specified). {it:options} are as follows.
+
+{phang2}
+    [{cmd:no}]{cmd:cap}[{cmd:(}{it:#}{cmd:)}] decides whether to draw whisker
+    caps. In case of {cmd:box(type(bar))} the default behavior is to draw the
+    caps, else the caps are suppressed. Type {cmd:nocap} or {cmd:cap} to
+    override the default behavior. Optional argument {it:#} specifies
+    the length of the caps. The default is to set {it:#} to 60% of the box width
+    in case of {cmd:box(type(bar))} and else to 0.1.
 
 {phang2}
     {opt s:tatistics(lo up)} selects custom statistics to be used for the
@@ -519,30 +553,33 @@
 {phang}
     [{cmd:no}]{cmd:box}[{cmd:(}{it:options}{cmd:)}] determines
     whether the IQR box is printed or not. The default is to print the box
-    unless option {cmd:overlay} is specified. {it:options}
-    are as follows.
+    unless option {cmd:overlay} is specified (and {cmd:nodensity} is not
+    specified). {it:options} are as follows.
 
 {phang2}
-    {opt t:ype(type)} sets the type of plot to by used, where {it:type} can
-    be {cmdab:b:ar}, {cmdab:f:ill}, or {cmdab:l:ines}. The default is
-    {cmd:type(bar)} unless {cmd:split()} is specified, which prints the box as a
-    bar. Specify {cmd:type(fill)} to display the box by adding shading to the
-    density estimate between the lower and upper bounds. Type {cmd:type(lines)}
-    to display the box as two lines across the density estimate, one for each
-    bound; this is the default if {cmd:split()} is specified.
+    {opt t:ype(type)} sets the type of plot to be used, where {it:type} can
+    be one of the following.
+
+{p2colset 13 22 24 2}{...}
+{p2col:{opt sp:ike}}display the box as a thick spike; this is the default unless
+    {cmd:split()} or {cmd:nodensity} is specified
+    {p_end}
+{p2col:{opt b:ar}}display the box as a bar; this is the default if
+    {cmd:nodensity} is specified
+    {p_end}
+{p2col:{opt f:ill}}display the box by adding shading to the
+    density estimate between the lower and upper bounds of the box
+    {p_end}
+{p2col:{opt l:ines}}display the box as two lines across the density estimate, one
+    for each bound; this is the default if {cmd:split()} is specified (and
+    {cmd:nodensity} is not specified)
+    {p_end}
 
 {pmore2}
-    Note that twoway plottype {helpb twoway_rspike:rspike}, not
-    {helpb twoway_rbar:rbar}, is used to generate the
-    box in case of {cmd:type(bar)}; type, for example,
-    {cmd:box(recast(rbar) barwidth(0.1))} to change the
-    plottype to {helpb twoway_rbar:rbar} and use a bar width of 0.1.
-
-{pmore2}
-    Furthermore, note that {cmd:type(fill)} and {cmd:type(lines)} will not
+    Note that {cmd:type(fill)} and {cmd:type(lines)} will not
     display anything if option {helpb violinplot##range:range()} has been
     applied and the selected range is such that the lower or upper
-    bound lies outside the density evaluation range.
+    bound of the box lies outside the density evaluation range.
 
 {phang2}
     {opt s:tatistics(lo up)} selects custom statistics to be used for the
@@ -557,16 +594,20 @@
     bounds of the box. {cmd:limits()} takes precedence over {cmd:statistics()}.
 
 {phang2}
-    {it:line_options} or {it:area_options} are graph options affecting the rendering
-    of the box; see help {it:{help line_options}} for {cmd:type(bar)} or {cmd:type(lines)},
-    and help {it:{help area_options}} for {cmd:type(fill)}. In case of {cmd:type(bar)},
-    the default is to apply {cmd:lwidth(vthick)}; this is skipped if any
-    {it:line_options} are specified. In case of {cmd:type(fill)}, the default is to apply
-    {cmd:fintensity(50)} and {cmd:lcolor(%0)} to the shading; the former, but not the latter,
-    will be skipped if any {it:area_options} are specified (specify, e.g.,
-    {cmd:lcolor(%100)} to override the latter). In case of {cmd:type(lines)}, the
-    default is to apply {cmd:plattern(shortdash)}; this is skipped if any
-    {it:line_options} are specified.
+    {opt barw:idth(#)} sets the with of the bars in case of {cmd:type(bar)}. The
+    default bar width is 0.7 in case of {cmd:nodensity} and else one sixth.
+
+{phang2}
+    {it:line_options}, {it:barlook_options}, or {it:area_options} are graph
+    options affecting the rendering of the box; see help
+    {it:{help line_options}} for {cmd:type(spike)} and {cmd:type(lines)},
+    help {it:{help barlook_options}} for {cmd:type(bar)},
+    and help {it:{help area_options}} for {cmd:type(fill)}. In case of {cmd:type(spike)},
+    the default is to apply {cmd:lwidth(vthick)}. In case of {cmd:type(bar)},
+    the default is to apply {cmd:fcolor(*.5)} or, if {cmd:overlay} has been
+    specified, {cmd:fcolor(%50)}. In case of {cmd:type(fill)}, the
+    default is to apply {cmd:fcolor(*.5)} or {cmd:fcolor(%50)} and {cmd:lcolor(%0)}. In case of
+    {cmd:type(lines)}, the default is to apply {cmd:plattern(shortdash)}.
 
 {marker median}{...}
 {phang}
@@ -575,12 +616,23 @@
     marker. {it:options} are as follows.
 
 {phang2}
-    {opt t:ype(type)} sets the type of plot to by used, where {it:type} can
-    be {cmdab:m:arker} or {cmdab:l:ine}. The default is {cmd:type(marker)}
-    unless {cmd:split()} is specified, which prints the median as a marker. Specify
-    {cmd:type(line)} to display the median as a line across the density
-    estimate. This is the default if {cmd:split()} is specified. Note that
-    {cmd:type(line)} will not display anything if option
+    {opt t:ype(type)} sets the type of plot to be used, where {it:type} can
+    be one of the following.
+
+{p2colset 13 22 24 2}{...}
+{p2col:{cmdab:m:arker}}display the median as a marker; this is the default
+    unless {cmd:split()} or {cmd:box(type(bar))} is specified
+    {p_end}
+{p2col:{cmdab:b:line}}display the median as a line inside the IQR bar; this is
+    the default in case of {cmd:box(type(bar))}
+    {p_end}
+{p2col:{cmdab:l:ine}}display the median as a line across the density
+    estimate; this is the default if {cmd:split()} is specified (but not
+    {cmd:box(type(bar))})
+    {p_end}
+
+{pmore2}
+    Note that {cmd:type(line)} will not display anything if option
     {helpb violinplot##range:range()} has been applied and the selected range
     is such that median lies outside the density evaluation range.
 
@@ -591,43 +643,26 @@
     Hodges-Lehmann location measure.
 
 {phang2}
+    {opt barw:idth(#)} sets the length of the line in case of {cmd:type(bline)}. The
+    default is to use the bar width from {cmd:box()}.
+
+{phang2}
     {it:marker_options} or {it:line_options} are graph options affecting the
     rendering of the median; see help {it:{help marker_options}} for {cmd:type(marker)}
-    and help {it:{help line_options}} for {cmd:type(line)}. In case of {cmd:type(marker)},
-    the default is to apply options {cmd:msymbol(O)} and
-    {cmd:msize(vsmall)} if a box of type {cmd:bar} is displayed, and to apply
-    {cmd:mcolor(white)} if a box of type {cmd:bar} is displayed and {cmd:medcolors()} is
-    not specified; these defaults are skipped if any {it:marker_options} are
-    specified.
+    and help {it:{help line_options}} for {cmd:type(bline)} and {cmd:type(line)}. In case
+    of {cmd:type(marker)} with {cmd:box(type(spike))}, the default is to apply options
+    {cmd:msymbol(O)}, {cmd:msize(vsmall)}, {cmd:mcolor(white)}; type
+    {cmd:mcolor(.)} to use plot's default color rather than white.
 
 {marker mean}{...}
 {phang}
     {cmd:mean}[{cmd:(}{it:options}{cmd:)}] prints a marker for the
-    mean. {it:options} are as follows.
-
-{phang2}
-    {opt t:ype(type)} sets the type of plot to by used, where {it:type} can
-    be {cmdab:m:arker} or {cmdab:l:ine}. The default is
-    {cmd:type(marker)}, which prints the mean as a marker. Specify {cmd:type(line)}
-    to display the mean as a line across the density estimate. Note that {cmd:type(line)}
-    will not display anything if option {helpb violinplot##range:range()} has been
-    applied and the selected range is such that mean lies outside the density
-    evaluation range.
-
-{phang2}
-    {opt s:tatistic(statistic)} selects a custom statistic to be used instead of the
-    mean. Any statistic supported by {helpb dstat##stats:dstat} is allowed. Default
-    is {cmd:statistic(mean)} (arithmetic mean). For example, type {cmd:statistic(trim5)} to use
-    the 5% trimmed mean.
-
-{phang2}
-    {it:marker_options} or {it:line_options} are graph options affecting the
-    rendering of the mean; see help {it:{help marker_options}} for {cmd:type(marker)}
-    and help {it:{help line_options}} for {cmd:type(line)}. In case of {cmd:type(marker)},
-    if {cmd:split()} is omitted, the default is to apply options {cmd:msymbol(pipe)},
-    {cmd:msize(huge)}, and, depending on context, {cmd:msangle(90)}; if
-    {cmd:split()} is specified, the default is to apply {cmd:msymbol(x)}. These
-    defaults are skipped if any {it:marker_options} are specified.
+    mean. {it:options} are as for {cmd:median()}, but with different
+    defaults: the default {cmd:type()} is {cmd:marker}; the default
+    {cmd:statistic()} is the mean; in case of {cmd:type(marker)} and
+    {cmd:box(type(spike))} options {cmd:msymbol(pipe)}, {cmd:msize(huge)}, and,
+    depending on context, {cmd:msangle(90)} are applied, else the default marker
+    is {cmd:msymbol(X)}.
 
 {marker rag}{...}
 {phang}
@@ -716,8 +751,16 @@
     {it:marker_options} are graph options affecting the rendering of the
     markers; see help {it:{help marker_options}}. By default, options
     {cmd:msymbol(pipe)} and, depending on context, {cmd:msangle(90)} are
-    applied; you can override the default by specifying these options
-    explicitly.
+    applied. For example, type {cmd:rag(msymbol(o))} to use filled circles as
+    markers.
+
+{marker outsides}{...}
+{phang}
+    {cmd:outsides}[{cmd:(}{it:options}{cmd:)}] displays markers for
+    outside values (values outside of the whiskers). Option {cmd:outsides()} is
+    implemented as a wrapper for {helpb violinplot##rag:rag()}; it is equivalent to typing
+    {cmd:rag(outsides msymbol(o)} {it:options}{cmd:)}. Only one of {cmd:outsides()}
+    and {cmd:rag()} is allowed.
 
 {marker order}{...}
 {phang}
@@ -810,6 +853,21 @@
 {marker other}{...}
 {dlgtab:Other}
 
+{phang}
+    {opt gap(#)} specifies the size of the extra gap inserted between clusters of
+    results that are grouped together within the same subgraph. This is only relevant
+    if there are multiple outcome variables and multiple over categories (and if {cmd:overlay} is
+    not specified). The default extra gap is 0.5 (i.e. half of the step
+    size between results).
+
+{phang}
+    {opt pad(# [#])} specifies the size of the outer padding, that is,
+    the minimum space allocated on the categorical axis before the position
+    of the first result and after the position of the last result. Specify two
+    values to use different padding sizes; type {cmd:pad(0)} to omit
+    padding. The default padding is 0.5 on both sides (i.e. half of the step size between
+    results), unless {cmd:dscale(.)} is specified, in which case padding is omitted.
+
 {marker pstyles}{...}
 {phang}
     {opth pstyles(numlist)} determines the plot styles applied to the
@@ -883,13 +941,14 @@
         . {stata violinplot wage ttl_exp tenure, nobox mean(msymbol(X) msize(large) mcolor(maroon))}
         {p_end}
 {p 8 12 2}
-        . {stata violinplot wage ttl_exp tenure, box(recast(rbar) fintensity(50) barwidth(.15)) median(msymbol(d))}
+        . {stata violinplot wage ttl_exp tenure, box(type(bar) barwidth(.1)) whiskers(nocap)}
         {p_end}
         . {stata violinplot wage ttl_exp tenure, vertical}
         . {stata violinplot wage ttl_exp tenure, pstyles(1/3)}
 {p 8 12 2}
         . {stata violinplot wage ttl_exp tenure, range(. 31) plotregion(margin(r=0))}
         {p_end}
+        . {stata violinplot wage ttl_exp tenure, range(p5 p95)}
         . {stata violinplot wage ttl_exp tenure, fill}
         . {stata violinplot wage ttl_exp tenure, noline}
         . {stata violinplot wage ttl_exp tenure, fill(select(3))}
@@ -926,12 +985,15 @@
 {p 8 12 2}
         . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(race) by(union) swap}
         {p_end}
+{p 8 12 2}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(race) by(union) swap nostack}
+        {p_end}
 
 {pstd}
     Use parentheses to define groups of variables that will be placed in separate
     subgraphs:
 
-        . {stata violinplot (wage) (ttl_exp), over(race)}
+        . {stata violinplot (wage) (ttl_exp), pdf(ll(0)) over(race)}
 
 {pstd}
     Use option {cmd:overlay} to create overlays (whiskers and boxes will be omitted by default):
@@ -940,7 +1002,7 @@
         . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) overlay swap}
         {p_end}
 {p 8 12 2}
-        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) overlay swap noline fill(color(%30)) key(median)}
+        . {stata violinplot wage ttl_exp tenure, pdf(ll(0)) over(union) overlay swap noline fill(fcolor(%30)) key(median)}
         {p_end}
 
 {pstd}
@@ -963,13 +1025,13 @@
         {p_end}
 
 {p 8 12 2}
-        . {stata violinplot wage, over(industry) colors(sb muted) nobox nowhiskers median(msymbol(o))}
+        . {stata violinplot wage, pdf(ll(0)) over(industry) colors(sb muted) nobox nowhiskers median(msymbol(o))}
         {p_end}
 {p 8 12 2}
-        . {stata violinplot wage, over(industry) colors(sb muted) box(type(fill)) median(msymbol(o) msize(vsmall) color(white)) nowhiskers}
+        . {stata violinplot wage, pdf(ll(0)) over(industry) colors(sb muted) box(type(fill)) median(msymbol(o) msize(vsmall) color(white)) nowhiskers}
         {p_end}
 {p 8 12 2}
-        . {stata violinplot wage, over(industry, descending) colors(plasma) fill nobox nowhiskers nomedian}
+        . {stata violinplot wage, pdf(ll(0)) over(industry, descending) colors(plasma) fill nobox nowhiskers nomedian}
         {p_end}
 
 {pstd}
@@ -987,13 +1049,21 @@
         . {stata violinplot price, over(foreign) vertical fill rag(spread(5) msymbol(o) mcolor(maroon%50) mlcolor(%0))}
         {p_end}
 
+{pstd}
+    Apply option {cmd:nodensity} to display box plots rather than violin plots:
+
+{p 8 12 2}
+        . {stata violinplot mpg turn, over(foreign) swap nostack nodensity outsides}
+        {p_end}
+
 
 {title:Stored results}
 
 {p2colset 5 16 16 2}{...}
+{p2col : {cmd:r(table)}}matrix of summary statistics{p_end}
 {p2col : {cmd:r(neq)}}number of equations in {cmd:r(table)}{p_end}
 {p2col : {cmd:r(eq}{it:#}{cmd:)}}label of equation {it:#}{p_end}
-{p2col : {cmd:r(table)}}matrix of summary statistics{p_end}
+{p2col : {cmd:r(legend)}}definition of legend option{p_end}
 
 
 {title:References}
