@@ -28,7 +28,7 @@ Install dependencies from SSC:
 
 ---
 
-Some examples (use of the `grytsle` package is made; type `ssc install grstyle` to install the package):
+Some examples (use of the `grstyle` package is made; type `ssc install grstyle` to install the package):
 
     clear all
     sysuse nlsw88
@@ -96,13 +96,16 @@ Some examples (use of the `grytsle` package is made; type `ssc install grstyle` 
 
 ![example 14](/images/14.png)
 
-    violinplot mpg turn, over(foreign) swap nostack vertical nodensity outsides
+    violinplot mpg turn, over(foreign) swap nostack nodensity outsides
 
 ![example 15](/images/15.png)
 
 ---
 
 Main changes:
+
+    13may2025 (1.2.6)
+    - vertical now default if nodensity is specified
 
     13may2025 (1.2.5)
     - option -nodensity- added

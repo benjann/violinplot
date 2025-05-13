@@ -229,11 +229,13 @@
 
 {phang}
     {opt vertical} draws vertical violins. This is the default if {cmd:overlay}
-    (but not {cmd:left} or {cmd:right}) or {cmd:split()} is specified.
+    (but not {cmd:left} or {cmd:right}), {cmd:split()}, or {cmd:nodensity} is
+    specified.
 
 {phang}
     {opt horizontal} draws horizontal violins. This is the default unless
-    {cmd:overlay} (but not {cmd:left} or {cmd:right}) or {cmd:split()} is specified.
+    {cmd:overlay} (but not {cmd:left} or {cmd:right}), {cmd:split()}, or
+    {cmd:nodensity} is specified.
 
 {phang}
     {opt left} prints the left half of each violin. The default is to print both
@@ -484,8 +486,8 @@
     {cmd:nodensity} omits the PDF lines and fill and changes default behavior
     for some of the other elements. Use this option if you want to draw box plots
     rather than violin plots. Specifying {cmd:nodensity} has the same effect
-    as typing {cmd:noline}, {cmd:nofill}, {cmd:box(type(bar) barwidth(.7))}, and
-    {cmd:whiskers}.
+    as typing {cmd:noline}, {cmd:nofill}, {cmd:box(type(bar) barwidth(.7))},
+    {cmd:whiskers}, and {cmd:vertical}.
 
 {marker line}{...}
 {phang}

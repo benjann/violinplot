@@ -1,4 +1,4 @@
-*! version 1.2.5  13may2025  Ben Jann
+*! version 1.2.6  13may2025  Ben Jann
 
 program violinplot, rclass
     version 15
@@ -68,6 +68,7 @@ program violinplot, rclass
     if "`horizontal'"=="" {
         if "`split'"!=""                              local vertical vertical
         else if "`overlay'"!="" & "`left'`right'"=="" local vertical vertical
+        else if "`nodensity'"!=""                     local vertical vertical
     }
     // - by() and over()
     if `"`by'"'!=""   _parse_overby by `by'
