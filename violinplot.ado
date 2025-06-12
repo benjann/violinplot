@@ -1,4 +1,4 @@
-*! version 1.2.6  13may2025  Ben Jann
+*! version 1.2.7  12jun2025  Ben Jann
 
 program violinplot, rclass
     version 15
@@ -274,7 +274,7 @@ program violinplot, rclass
     // - further option
     if "`n'"!="" local nopt n(`n')
     _parse_pdfopts, `pdfopts' // extracts -exact- option
-    _parse_range `range' // returns pdf_l pdf_u
+    _parse_range `range' // returns range
     _parse_dscale `dscale' // returns dscale and dstype
     local dscale = `dscale' * 0.5
     if "`tight'"=="" local tight `ltight' `rtight'
@@ -357,51 +357,72 @@ program violinplot, rclass
     
     // collect levels of split
     if "`split'"!="" {
-        qui levelsof `split' if `touse'
+        local splitstr = substr("`: type `split''",1,3)=="str"
+        if `splitstr' {
+            qui levelsof `split' if `touse'
+        }
+        else {
+            local splitfmt: format `split'
+            tempname SLEV
+            qui levelsof `split' if `touse', matrow(`SLEV')
+        }
         local k_split = r(r)
         if `k_split'!=2 {
             di as err "split() must identify exactly two groups"
             exit 499
         }
         local splitlevels `"`r(levels)'"'
-        local splitstr = substr("`: type `split''",1,3)=="str"
     }
     else {
+        local splitstr    0
         local k_split     1
         local splitlevels ""
-        local splitstr    0
     }
     
     // collect levels of over and by
     if "`over'"!="" {
-        qui levelsof `over' if `touse', `over_missing'
+        local overstr    = substr("`: type `over''",1,3)=="str"
+        if `overstr' {
+            qui levelsof `over' if `touse', `over_missing'
+        }
+        else {
+            local overfmt: format `over'
+            tempname OLEV
+            qui levelsof `over' if `touse', `over_missing' matrow(`OLEV')
+        }
         local k0_over    = r(r)
         local k_over     = `k0_over' + ("`over_total'"!="")
         local overlevels `"`r(levels)'"'
-        local overstr    = substr("`: type `over''",1,3)=="str"
         if "`atover'"!="" & `overstr' {
             di as err "atover not allowed with string variable"
             exit 198
         }
     }
     else {
+        local overstr    0
         local k0_over    0
         local k_over     1
         local overlevels ""
-        local overstr    0
     }
     if "`by'"!="" {
-        qui levelsof `by' if `touse', `by_missing'
+        local bystr = substr("`: type `by''",1,3)=="str"
+        if `bystr' {
+            qui levelsof `by' if `touse', `by_missing'
+        }
+        else {
+            local byfmt: format `by'
+            tempname BYLEV
+            qui levelsof `by' if `touse', `by_missing' matrow(`BYLEV')
+        }
         local k0_by = r(r)
         local k_by  = `k0_by' + ("`by_total'"!="")
         local bylevels `"`r(levels)'"'
-        local bystr = substr("`: type `by''",1,3)=="str"
     }
     else {
+        local bystr     0
         local k0_by     0
         local k_by      1
         local bylevels  ""
-        local bystr     0
     }
     
     // assign results layers
@@ -532,8 +553,12 @@ program violinplot, rclass
                     }
                 }
                 else {
-                    if "`label'"!="" local lab `"`lev'"'
-                    else             local lab: lab (``tmp'') `lev'
+                    if "`label'"=="" {
+                        local lab: lab (``tmp'') `lev', strict
+                    }
+                    if `"`lab'"'=="" {
+                        local lab `: di ``tmp'fmt' `lev''
+                    }
                 }
             }
             local `tmp'lbls `"``tmp'lbls'`space'`"`lab'"'"'
@@ -554,8 +579,12 @@ program violinplot, rclass
         if `"`lab'"'=="" {
             if `splitstr' local lab `"`lev'"'
             else {
-                if "`label'"!="" local lab `"`lev'"'
-                else             local lab: lab (`split') `lev'
+                if "`label'"=="" {
+                    local lab: lab (`split') `lev', strict
+                }
+                if `"`lab'"'=="" {
+                    local lab `: di `splitfmt' `lev''
+                }
             }
         }
         local splitlbls `"`splitlbls'`space'`"`lab'"'"'
@@ -618,13 +647,16 @@ program violinplot, rclass
                 local ++eq
                 gettoken slev slvls : slvls
                 _makeiff `touse' `TOUSE' /* returns iff, tousej, eqlbl
-                    */ `j' `k0_by'   "`by'"    `bystr'    `"`bylev'"' /*
-                    */ `o' `k0_over' "`over'"  `overstr'  `"`olev'"' /*
-                    */ `s'           "`split'" `splitstr' `"`slev'"'
+                    */ `j' `k0_by'   "`by'"    `bystr'   `"`bylev'"' "`BYLEV'"/*
+                    */ `o' `k0_over' "`over'"  `overstr' `"`olev'"'  "`OLEV'"/*
+                    */ `s'          "`split'" `splitstr' `"`slev'"'  "`SLEV'"
                 local eq`eq' `"`eqlbl'"'
                 local EQ`eq' `"`eqLBL'"'
                 forv g = 1/`k_grp' {
                     forv i = 1/`k_var_`g'' {
+                        if !`: list sizeof RANGE' local RANGE: copy local range
+                        gettoken pdf_l RANGE : RANGE
+                        gettoken pdf_u RANGE : RANGE
                         local eqs `eqs' `eq'
                         local xvar: word `i' of `varlist_`g''
                         su `xvar' `iff', meanonly
@@ -1816,20 +1848,15 @@ program _parse_pdfopts
 end
 
 program _parse_range
-    if `"`0'"'=="box" local 0 box_l box_u
-    if `"`0'"'==substr("whiskers",1,max(4,strlen(`"`0'"')))/*
-        */ local 0 whisk_l whisk_u
-    _parse_stats `0' // stats, nstat
-    if `nstats'>2 {
-        di as err "rage() invalid -- too many elements"
-        exit 198
+    foreach el of local 0 {
+        if `"`el'"'=="box"/*
+            */ local el box_l box_u
+        else if `"`el'"'==substr("whiskers",1,max(4,strlen(`"`el'"')))/*
+            */ local el whisk_l whisk_u
+        local range `"`range'`space'`el'"'
+        local space " "
     }
-    gettoken lb stats : stats
-    gettoken ub       : stats
-    if `"`lb'"'=="." local lb
-    if `"`ub'"'=="." local ub
-    c_local pdf_l `"`lb'"'
-    c_local pdf_u `"`ub'"'
+    c_local range `"`range'"'
 end
 
 program _parse_dscale
@@ -1897,7 +1924,8 @@ program _getcolr
 end
 
 program _makeiff
-    args touse TOUSE j j0 by bystr bylev o o0 over ostr olev s split sstr slev
+    args touse TOUSE j j0 by bystr bylev BYLEV o o0 over ostr olev OLEV/*
+        */ s split sstr slev SLEV
     local iff
     local lbl
     local LBL
@@ -1905,7 +1933,7 @@ program _makeiff
     if "`by'"!="" {
         if `j'<=`j0' { // (i.e. if not total)
             if `bystr' local iff `"`by'==`"`bylev'"'"'
-            else       local iff `"`by'==`bylev'"'
+            else       local iff `"`by'==`BYLEV'[`j',1]"'
             local lbl `"`by' = {bf:`bylev'}"'
             local LBL `"`by' = `bylev'"'
         }
@@ -1915,7 +1943,7 @@ program _makeiff
         if `o'<=`o0' { // (i.e. if not total)
             if `"`iff'"'!="" local iff `"`iff' & "'
             if `ostr' local iff `"`iff'`over'==`"`olev'"'"'
-            else      local iff `"`iff'`over'==`olev'"'
+            else      local iff `"`iff'`over'==`OLEV'[`o',1]"'
             if `"`lbl'"'!="" {
                 local lbl `"`lbl', "'
                 local LBL `"`LBL', "'
@@ -1928,7 +1956,7 @@ program _makeiff
     if "`split'"!="" {
         if `"`iff'"'!="" local iff `"`iff' & "'
         if `sstr' local iff `"`iff'`split'==`"`slev'"'"'
-        else      local iff `"`iff'`split'==`slev'"'
+        else      local iff `"`iff'`split'==`SLEV'[`s',1]"'
         if `"`lbl'"'!="" {
             local lbl `"`lbl', "'
             local LBL `"`LBL', "'
@@ -1997,6 +2025,8 @@ end
 
 program Fit_stats, rclass
     args stats xvar wgt iff qdef box_limits whisk pdf_l pdf_u
+    if `"`pdf_l'"'=="." local pdf_l
+    if `"`pdf_u'"'=="." local pdf_u
     // compile list of target statistics
     local nstats 4
     local haswhisk 0

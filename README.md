@@ -55,7 +55,8 @@ Some examples (use of the `grstyle` package is made; type `ssc install grstyle` 
 
 ![example 5](/images/5.png)
 
-    violinplot wage ttl_exp tenure, pdf(ll(0)) split(union) key(fill) labels("" "Work Experience" "Tenure")
+    violinplot wage ttl_exp tenure, pdf(ll(0)) split(union) key(fill) ///
+        labels("" "Work Experience" "Tenure")
 
 ![example 6](/images/6.png)
 
@@ -103,6 +104,13 @@ Some examples (use of the `grstyle` package is made; type `ssc install grstyle` 
 ---
 
 Main changes:
+
+    12jun2025 (1.2.7)
+    - split(), over(), by(): display format now taken into account when generating
+      labels (if numeric)
+    - split(), over(), by(): non-integer values could lead to empty subpopulations;
+      this is fixed
+    - multiple sets of limits can now be specified in range()
 
     13may2025 (1.2.6)
     - vertical now default if nodensity is specified

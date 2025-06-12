@@ -1,5 +1,5 @@
 {smcl}
-{* 13may2025}{...}
+{* 12jun2025}{...}
 {hi:help violinplot}{...}
 {right:{browse "https://github.com/benjann/violinplot/"}}
 {hline}
@@ -393,25 +393,25 @@
 
 {marker range}{...}
 {phang}
-    {cmd:range(}{it:from} [{it:to}]{cmd:)} limits the (maximum) range across which
-    the PDF will be evaluated. This may be useful if there are outliers in the
-    data and you want to clip the display to the main part of the data. Arguments
-    {it:from} and {it:to} may be as follows.
+    {cmd:range(}{it:ll} [{it:ul} {it:...}]{cmd:)} limits the (maximum) range
+    across which the PDF will be evaluated, where {it:ll} sets the lower limit
+    and {it:ul} sets the upper limit. This may be useful, for example, if there
+    are outliers in the data and you want to clip the display to the main part
+    of the data. Repeat {it:ll} and {it:ul} to use different limits across
+    variables and subpopulations (the specified limits will be recycled). Arguments
+    {it:ll} and {it:ul} may be as follows.
 
 {p2colset 13 22 24 2}{...}
 {p2col:{cmd:.}}no limit{p_end}
 {p2col:{it:#}}limit by fixed value {it:#}{p_end}
 {p2col:{cmd:box_l}}limit by lower value of box{p_end}
 {p2col:{cmd:box_u}}limit by upper value of box{p_end}
+{p2col:{cmd:box}}shorthand for {cmd:box_l box_u}{p_end}
 {p2col:{cmd:whisk_l}}limit by lower value of whiskers{p_end}
 {p2col:{cmd:whisk_u}}limit by upper value of whiskers{p_end}
+{p2col:{cmdab:whisk:ers}}shorthand for {cmd:whisk_l whisk_u}{p_end}
 {p2col:{it:stat}}limit by value of {it:stat}, where {it:stat} is any statistic
     allowed by {helpb dstat##stats:dstat} (e.g. {cmd:p1} or {cmd:p99}){p_end}
-
-{pmore}
-    {cmd:range(box)} can be used as shorthand for {cmd:range(box_l box_u)};
-    {cmd:range(}{cmdab:whisk:ers}{cmd:)} can be used as shorthand for
-    {cmd:range(whisk_l whisk_u)}.
 
 {pmore}
     By default, fast density estimation based on an approximation grid is used
